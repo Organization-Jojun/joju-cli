@@ -1,4 +1,4 @@
-# PROYECTO.md — [NOMBRE DEL PRODUCTO · POR CONGELAR EN FASE 0]
+# PROYECTO.md — Jojun
 
 **Hackathon Aleph 2026 · 🍐 Pears Track (sponsor Tether)**
 Abre: sáb 22.ago 12:00 (ARG) · Cierra: **dom 23.ago 12:00 (ARG), sin prórroga.**
@@ -10,44 +10,52 @@ Juzgamiento: dom 13:00 (ARG), ~4 h, online, demo async. Premio: 1º $1.000 · 2�
 
 ---
 
-## Estado: FASE 0 (setup). El producto NO está congelado.
+## Estado: CONGELADO (Fase 0 cerrada). Listo para Fase 1.
 
-Este repo se opera en dos fases (ver `AGENTS.md`). Ahora mismo estamos en **Fase 0**: el agente
-**pregunta y congela** producto, stack fino y ownership **una sola vez**. En cuanto esto quede
-cerrado, arranca la **Fase 1**: 9 horas de build autónomo, sin revisión humana.
+Congelado: **sáb 22.ago 2026** (docs). Producto, process shape, P2P de producto, layout y contrato
+A↔B **no se reabren** salvo que Jonatin lo pida. En Fase 1 los cloud agents no preguntan: ejecutan
+contra este corte.
 
-**Lo que el agente debe preguntar y dejar congelado aquí antes de escribir código de producto:**
-
-1. **Qué CLI construimos** (la idea concreta). Direcciones del track: herramienta de sistema, juego
-   de terminal, TUI de mensajería, herramienta de dev, o la dirección bonus **BLE-Swarm** (P2P por
-   Bluetooth, sin internet — "apagá el wifi y sigue funcionando", un demo que aterriza en la sala).
-2. **La *process shape*:** `main` (updater en worker thread), `variant/single-thread`, o
-   `variant/daemon` (one-shot que sale mientras el daemon actualiza). Elegir bien esto **es parte de
-   hacerlo bien** según el brief.
-3. **Cuánto P2P de verdad** entra al MVP (Hyperswarm/Hypercore/Hyperdrive) vs. qué queda en roadmap.
-4. **El layout de carpetas** (cierra las rutas de ownership de `AGENTS.md` y del hook de auditoría).
-5. **El contrato A↔B:** la interfaz entre el módulo de Jonatin (lógica del CLI) y el de Julián (P2P +
-   deploy/OTA). Se acuerda **antes** de escribir lógica; los fixtures van en el primer commit.
-
-Hasta que estén los cinco puntos, esto queda como `[POR CONGELAR]`. No inventes en silencio.
+Template de arranque (cuando se clone, **después** de este freeze): `hello-pear-bare`
+rama **`variant/daemon`**.
 
 ---
 
-## Para quién es · qué resuelve — `[POR CONGELAR EN FASE 0]`
+## Para quién es · qué resuelve
 
-> Regla del brief: **"build whatever you'd actually use"**. El criterio de corte es que sea algo que
-> una persona **de verdad usaría**, no una demo de laboratorio. Rellena aquí en una frase el dolor y
-> el usuario cuando se congele la idea.
+Hackers en una sala (Aleph, o Jonatin y Julián en dos laptops): pasar un snippet o un blob chico
+sin Discord, USB ni un servidor. `paste` en una máquina, `yank` en la otra, mismo topic de swarm.
 
 ---
 
-## Qué es (una vez congelado)
+## Qué es
 
-Un **CLI standalone** sobre el stack Pear (Bare), arrancado desde `hello-pear-bare`, desplegado con
-la Pear CLI, **instalable con `pear install pear://<key>`**, con **OTA updates P2P** que llegan a
-copias ya instaladas sin que el usuario haga nada.
+Un **CLI standalone one-shot** llamado **Jojun**, sobre Pear (Bare), desde `hello-pear-bare`
+`variant/daemon`, desplegado con la Pear CLI, **instalable con `pear install pear://<key>`**, con
+**OTA P2P** a copias ya instaladas. El comando hace su trabajo y **sale**; el updater corre en un
+daemon (errores de update en `<storage>/updates.log`, no en la terminal).
 
-**Pitch de una frase:** `[POR CONGELAR]`
+**Pitch de una frase:** Con Jojun pegás algo en una máquina, lo yankéas en la otra, por swarm, y el
+binario se actualiza solo.
+
+**Inspiración Herdr (craft, no producto):** cinco acciones en `--help` / `keys` (join, paste, yank,
+wait, leave); `--json` e IDs de topic explícitos. **No** multiplexor, panes, agentes, plugins,
+remote, worktrees, ni overlay `prefix+?` (no hay TUI en el MVP).
+
+---
+
+## Las cinco decisiones (cerradas)
+
+1. **CLI:** **Jojun** — room paste/yank por topic.
+2. **Process shape:** `variant/daemon` (como `swap`).
+3. **P2P de producto (MVP):** **Hyperswarm topic** (join / send / recv). **Fuera del MVP:**
+   Hypercore, Hyperdrive, BLE-Swarm. El OTA del pipeline Pear **siempre entra**.
+4. **Layout:** ver `AGENTS.md` / `docs/PLAN.md`. A = `src/core|cli|commands`. B =
+   `src/p2p|deploy|update` + `scripts/` + `out/`. Contrato = `src/contracts/`. `package.json`
+   (campo `upgrade` y deps de deploy) = Agent-B.
+5. **Contrato A↔B:** `join(topic)` · `send(bytes)` · `onMessage` · `leave` · status swarm.
+   Fixtures del primer commit de producto: topic hex, payload utf8, mock `peer-connected`.
+   Agent-A construye los comandos paste/yank contra fixtures. Agent-B cablea Hyperswarm de verdad.
 
 ---
 
@@ -55,54 +63,72 @@ copias ya instaladas sin que el usuario haga nada.
 
 | Criterio (del brief) | Qué lo defiende en nuestro caso |
 |---|---|
-| **Instala limpio** con `pear install pear://<key>` | Requisito duro. Si no corre, la entrada **no cuenta**. Es la prioridad #1, por encima de cualquier feature |
-| **La OTA update funciona de punta a punta** | Demostrar una release real aterrizando en una copia ya instalada. Esto **es** el track |
-| **La *process shape* encaja** con lo que hace la herramienta | `main` / `single-thread` / `daemon` elegido a conciencia, no por defecto |
-| **Es algo que alguien usaría de verdad** | El producto tiene un dolor real y un usuario real |
-| **P2P connectivity** | Hyperswarm/Hypercore/Hyperdrive donde suma, no de adorno |
+| **Instala limpio** con `pear install pear://<key>` | Requisito duro. Prioridad #1 |
+| **La OTA update funciona de punta a punta** | Release real aterrizando en copia instalada. Daemon: mirar `updates.log` |
+| **La *process shape* encaja** | One-shot → `variant/daemon`, no TUI en `main` |
+| **Es algo que alguien usaría de verdad** | Pegar/yankear un blob en la sala |
+| **P2P connectivity** | Hyperswarm topic en el producto + swarm del OTA |
 
-> Bonus opcional: **BLE-Swarm** (descubrimiento por Bluetooth, sin internet). Alto riesgo, alto
-> impacto en demo. Solo si el flujo feliz ya está cerrado.
+BLE-Swarm: **no en MVP.** Solo si el flujo feliz (install + OTA + paste/yank) ya cerró en el hito.
 
 ---
 
 ## Entregable (lo que se sube)
 
-- **Repo público** con README: qué construimos y de qué branch/variant de `hello-pear-bare` salimos.
-- **El `pear://` link**, sembrado y vivo **durante todo el juzgamiento** (dom 13:00–~17:00 ARG). Si
-  los jueces no lo pueden instalar, no lo pueden puntuar.
-- **Video demo grabado (async, 3 min)** — lo graba **Julián** — mostrando el install y una OTA
-  aterrizando.
-- **En qué plataformas** compilamos el binario.
+- **Repo público** (ya lo es) con README: qué es **Jojun** y que salimos de `variant/daemon`.
+- **El `pear://` link**, sembrado **durante todo el juzgamiento** (dom 13:00–~17:00 ARG).
+  **Quién siembra:** Jonatin (máquina Windows real).
+- **Video demo (async, 3 min)** — **Julián** — install + OTA aterrizando. Hook: el paste/yank en
+  dos máquinas, no un tour de flags.
+- **Plataformas del binario:** **Windows** en la máquina de Jonatin (documentar ahí el `make`).
+  **macOS** en el host de Julián (`make` darwin, no en Windows). Linux: cloud/VM si hace falta; no
+  es el demo.
 
 ---
 
-## Reloj (9 horas) — detalle por bloque en [`docs/PLAN.md`](docs/PLAN.md)
+## Reloj (8 horas de build) — detalle en [`docs/PLAN.md`](docs/PLAN.md)
+
+**Inicio anclado:** sáb 22.ago 2026, **14:26 UTC-5** (16:26 ARG). Duración: **8 h**. Feature freeze
+relativo **7:00**. Cierre **8:00**.
 
 | Bloque | Ventana | Qué pasa |
 |---|---|---|
-| **Lock** | 0:00–0:45 | Congelar producto+stack+ownership · `pear install` del template corriendo en máquina real · `pear touch` link en package.json |
-| **Plan** | 0:45–1:15 | Plan bite-sized · contrato A↔B + fixtures · elegir process shape |
-| **Build** | 1:15–5:30 | Flujo feliz e2e: el CLI hace su trabajo + P2P + primer `pear stage` + install desde otra máquina |
-| **Polish** | 5:30–7:30 | **OTA update real aterrizando** (esto es el criterio) · README · UX del CLI |
-| **Cierre** | 7:30–9:00 | Seed estable · Julián graba el 3-min · submit del `pear://` link · silencio de features |
+| **Lock** | 0:00–0:30 | Pear CLI + `pear touch` en máquina real. Clone `variant/daemon`. **Aún no cloud agents** |
+| **Plan** | 0:30–1:00 | Fixtures del contrato · esqueleto `stage`/`seed` a mano |
+| **Build** | 1:00–5:00 | **Aquí sí:** cloud agents codean. CLI + Hyperswarm + primer `pear stage` |
+| **Polish** | 5:00–6:45 | **OTA real aterrizando** · help de 5 acciones · `--json` |
+| **Cierre** | 6:45–8:00 | Seed (Jonatin en juzgamiento) · Julián graba · submit del link |
 
-**Hito crítico (~4:30):** ¿`pear install pear://<key>` corre desde una máquina limpia? Si no, cortar
-todo lo secundario y decirlo en voz alta.
-
----
-
-## In / Out (congelar aquí)
-
-**Dentro (MVP):** `[POR CONGELAR]` — pero el install + la OTA **siempre están dentro**.
-
-**Fuera (hard-cuts, en orden):** `[POR CONGELAR]` — lo primero que se corta es cualquier feature que
-no sea el install + OTA. Nunca se corta el pipeline de deploy.
+**Hito crítico (~4:00):** ¿`pear install pear://<key>` corre desde una máquina limpia? Si no, cortar
+help/JSON/segundo comando. **Nunca** el pipeline.
 
 ---
 
-## No tocar (una vez congelado)
+## In / Out
 
-- El requisito duro: `pear install pear://<key>` instalable + OTA aterrizando.
+**Dentro (MVP):**
+
+- `pear install` + OTA aterrizando + seed en juzgamiento
+- `variant/daemon`
+- comandos: join topic, `paste` (stdin), `yank` (último blob a stdout), `wait` a peer, `leave`
+- Hyperswarm topic (stream; sin persistencia si el peer no está)
+- `--help` / `keys` con las cinco acciones; `--json` si el reloj da
+- binario Windows (Jonatin) + Mac (Julián) si el reloj da
+
+**Fuera (hard-cuts, en orden):**
+
+1. `--json` / help extra / segundo comando de lujo
+2. TUI, overlay tipo `prefix+?`
+3. Hypercore, Hyperdrive, BLE-Swarm, multi-peer “bonito”
+4. Cualquier clone de Herdr (mux, agentes, plugins, remote, worktrees)
+5. **Nunca** se corta: install + OTA + seed
+
+---
+
+## No tocar (congelado)
+
+- El requisito duro: `pear install pear://<key>` + OTA aterrizando.
 - El stack Pear/Bare (no es Node.js).
-- El video como especificación del entregable, no como adorno.
+- `variant/daemon`.
+- El video como especificación del entregable.
+- Reabrir este corte sin que Jonatin lo pida.

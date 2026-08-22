@@ -3,8 +3,9 @@
 Eres el agente de **Jonatin (Agent-A)** y de **Julidev / Julián (Agent-B)**. Somos **dos personas**.
 Meta: **ganar el Pears Track**. No seas tímido. Sé agresivo, preciso y realista con el reloj.
 
-No inventes el producto ni el stack fino: eso se **congela una sola vez en Fase 0** (abajo). Después,
-durante las 9 horas de build, **no hay revisión humana**: decides, ejecutas, verificas y corriges solo.
+El producto y el stack fino **ya están congelados** en `PROYECTO.md` (**Jojun**, `variant/daemon`,
+Hyperswarm topic). Durante las **8 horas** de build **no hay revisión humana**: decides, ejecutas,
+verificas y corriges solo. **No reabras** el corte.
 
 ---
 
@@ -14,8 +15,8 @@ Este repo se opera en dos fases y **casi todas las dudas se resuelven sabiendo e
 
 | Fase | Quién manda | Comportamiento del agente |
 |---|---|---|
-| **Fase 0 · Setup + Freeze** | Humano + agente, **una sola vez** | El agente **pregunta** lo crucial (producto, stack fino, ownership, criterios de ganar) y lo **congela** en `PROYECTO.md`. Nada de código de producto todavía. |
-| **Fase 1 · Build autónomo (9 h)** | Cloud agents, **sin humano** | Decides / ejecutas / verificas / corriges **solo**. **Prohibido** "esperar confirmación" o "preguntar al usuario". Iteras hasta que pase. |
+| **Fase 0 · Setup + Freeze** | Humano + agente, **una sola vez** | **Hecha.** Corte en `PROYECTO.md`. |
+| **Fase 1 · Build autónomo (8 h)** | Cloud agents, **sin humano** | Decides / ejecutas / verificas / corriges **solo**. **Prohibido** "esperar confirmación" o "preguntar al usuario". Iteras hasta que pase. |
 
 **Regla de oro de la Fase 1:** si te falta una decisión de producto o stack, es que el freeze quedó
 incompleto. **No preguntes y no te detengas.** Toma la opción reversible más barata, sigue el flujo,
@@ -31,36 +32,36 @@ inventes en silencio; nunca frenes esperando a un humano.
 2. `HERRAMIENTAS.md` — con qué contamos (Pear stack obligatorio, MCP, accesos). No es un menú para
    inventar stack.
 3. `AGENTS.md` — este archivo (comportamiento).
-4. `docs/PLAN.md` — reloj de 9 h, mapa de propiedad del repo, protocolo de git.
+4. `docs/PLAN.md` — reloj de 8 h, mapa de propiedad del repo, protocolo de git.
 5. `HANDOFF.md` + `.agent-state/*` — qué hizo el otro agente, qué necesita, qué está bloqueado.
 
-Si falta `PROYECTO.md` o `HERRAMIENTAS.md` **en Fase 0**, pregunta. En Fase 1, no: registra el hueco
-y avanza.
+`PROYECTO.md` está congelado. En Fase 1 no preguntes producto: registra huecos operativos en
+`.agent-state/blockers.md` y avanza.
 
 ---
 
 ## Visión general del proyecto
 
-Un **CLI standalone construido sobre el stack Pear** (Bare, no Node.js), arrancado desde
-`hello-pear-bare`, desplegado con la Pear CLI e **instalable con `pear install pear://<key>`**, con
-**actualizaciones OTA peer-to-peer** que llegan a copias ya instaladas. El *qué hace la herramienta*
-se congela en Fase 0; el *cómo se despliega y se actualiza* es la mitad que gana el track y no se
-recorta jamás.
+**Jojun:** CLI one-shot (paste/yank por topic Hyperswarm) sobre Pear/Bare, desde
+`hello-pear-bare` **`variant/daemon`**, instalable con `pear install pear://<key>`, OTA P2P a copias
+ya instaladas. El *cómo se despliega y se actualiza* no se recorta jamás.
 
 ---
 
 ## Ownership — quién es dueño de qué
 
-Cada agente **solo edita archivos dentro de su carpeta asignada**. Las rutas finales se cierran en
-Fase 0 junto con el layout; esta tabla es el reparto por defecto y su forma no cambia.
+Cada agente **solo edita archivos dentro de su carpeta asignada**. Layout **congelado** (Fase 0).
+La forma (A = qué hace / B = deploy + P2P) no cambia.
 
 | Módulo / carpeta | Dueño | De qué responde |
 |---|---|---|
-| `src/core/`, `src/cli/`, `src/commands/` | **Agent-A · Jonatin** | El trabajo que hace la herramienta: lógica del CLI/TUI, comandos, experiencia en terminal |
-| `src/p2p/`, `src/deploy/`, `src/update/`, `scripts/`, binarios | **Agent-B · Julidev** | La capa P2P (Hyperswarm/Hypercore/Hyperdrive), el pipeline Pear: `pear touch`/`stage`/`release`, seed, OTA, build de binarios |
-| `.agent-state/`, `HANDOFF.md`, `docs/`, `README.md`, `.cursor/` | **Compartido** | Coordinación y estado. Edición permitida a los dos, con cuidado |
-| Video (grabación y corte) | **Julián (Agent-B)** | Graba el demo de 3 min: install + OTA aterrizando |
-| Integración | **Jonatin (Agent-A)**, con `integration-status.md` | Une ramas, resuelve el contrato A↔B, decide hard-cuts |
+| `bin.mjs`, `src/core/`, `src/cli/`, `src/commands/` | **Agent-A · Jonatin** | Entrypoint + comandos paste/yank/wait/leave/help de **Jojun**. Sin TUI en MVP |
+| `app.js`, `src/p2p/`, `src/deploy/`, `src/update/`, `scripts/`, `out/` | **Agent-B · Julidev** | Daemon updater; Hyperswarm; pipeline Pear; `npm run make` (Mac) |
+| `src/contracts/` | **Compartido** | `join`/`send`/`onMessage`/`leave`/status. Cambios: `HANDOFF.md` antes del push |
+| `package.json` (`upgrade`, deps deploy) | **Agent-B** | Agent-A pide deps por HANDOFF |
+| `.agent-state/`, `HANDOFF.md`, `docs/`, `README.md`, `.cursor/`, `AGENTS.md`, `PROYECTO.md`, `HERRAMIENTAS.md` | **Compartido** | Coordinación |
+| Video | **Julián (Agent-B)** | Demo 3 min: install + OTA. Seed de juzgamiento: **Jonatin** |
+| Integración | **Jonatin (Agent-A)** | Une ramas, contrato, hard-cuts · `.agent-state/integration-status.md` |
 
 **Regla explícita:** si necesitas tocar algo **fuera de tu alcance**, **no lo edites**. Documenta la
 petición en `HANDOFF.md` (y en `.agent-state/blockers.md` si te bloquea) y sigue con lo tuyo. El otro
@@ -88,13 +89,15 @@ feat(update): la OTA aterriza en una copia ya instalada
 
 ## Comandos exactos
 
-> Stack fijado por el brief (§Tech requirements). El comando de test depende del producto y se
-> confirma en Fase 0; si aún no existe suite, `verifier` corre el smoke real (abajo).
+> Stack fijado por el brief. Producto **Jojun**. Tests: `npm test` (brittle del template + smoke
+> de comandos contra fixtures). Si no hay suite aún, `verifier` corre el smoke real.
 
 ```bash
 # Instalar la Pear CLI (una vez por máquina)
 curl -fsSL https://install.pears.com/pear.sh | sh     # macOS / Linux
 # Windows:  irm https://install.pears.com/pear.ps1 | iex
+
+# Template (Fase 1, no antes del freeze escrito): hello-pear-bare variant/daemon
 
 # Instalar dependencias del proyecto
 npm install
@@ -108,7 +111,7 @@ npm start
 # Build de binario standalone
 npm run make                 # sale en out/<platform>-<arch>
 
-# Tests (confirmar el runner real en Fase 0; por defecto asumimos:)
+# Tests
 npm test
 
 # Desplegar / sembrar (requiere máquina real, ver "Cursor Cloud specific instructions")

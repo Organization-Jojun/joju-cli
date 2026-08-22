@@ -3,7 +3,7 @@
 Inventario de accesos y stack. **No es un menú para inventar stack.** Si algo no está aquí, no lo
 tenemos; si está aquí y no lo usamos, es porque no hace falta.
 
-Última verificación: `[FECHA · rellenar al arrancar Fase 0]`.
+Última verificación: **sáb 22.ago 2026** (freeze). Producto: **Jojun**. Build: **8 h** desde 14:26 UTC-5.
 
 ---
 
@@ -15,13 +15,14 @@ requirements.
 
 **Must do:**
 
-- **Construir sobre el stack Pear**, arrancando desde cualquier variante de `hello-pear-bare`.
+- **Construir sobre el stack Pear**, arrancando desde **`hello-pear-bare` rama `variant/daemon`**.
 - **Desplegar con la Pear CLI** y **sembrar (seed)**, para que sea instalable con
   `pear install pear://<key>`. Este es el requisito de entrada.
 - **OTA updates P2P funcionando** — demostrar una update real llegando a una copia instalada.
 - **Enviar el `pear://` link.** Sin él no se puede instalar ni juzgar.
 - **Tener conectividad P2P.**
-- Usar **Hyperswarm, Hypercore, Hyperdrive** y el resto del ecosistema está recomendado (no obligado).
+- **P2P de producto (Jojun):** Hyperswarm topic. Hypercore / Hyperdrive / BLE = roadmap, no MVP.
+  El OTA usa el swarm de Pear Runtime igual.
 
 > **Ojo capital: Pear y Bare NO son Node.js.** Los modelos asumen que sí y alucinan APIs de Node,
 > nombres de módulo falsos y flags de CLI que no existen. **Aterriza siempre en los docs reales**
@@ -33,7 +34,7 @@ requirements.
 |---|---|---|
 | `main` | Updater en un worker thread de Bare | Programas de vida larga (TUIs, REPLs, servicios) que mantienen la lógica P2P fuera del hilo principal |
 | `variant/single-thread` | Updater en el proceso principal | Vida larga, sin hilo aparte |
-| `variant/daemon` | Daemon separado actualiza en segundo plano; el comando retorna ya | One-shot cortos (tipo `git`): el comando sale mientras el daemon actualiza |
+| `variant/daemon` | Daemon separado actualiza en segundo plano; el comando retorna ya | **Elegida para Jojun** (one-shot, como `swap`) |
 
 > En la variante `daemon`, los errores van a `<storage>/updates.log`, no a la terminal. Míralo ahí
 > cuando las updates parezcan muertas.
@@ -44,7 +45,7 @@ requirements.
 curl -fsSL https://install.pears.com/pear.sh | sh     # instalar Pear CLI (mac/linux)
 # Windows: irm https://install.pears.com/pear.ps1 | iex
 
-git clone https://github.com/holepunchto/hello-pear-bare
+git clone -b variant/daemon https://github.com/holepunchto/hello-pear-bare
 cd hello-pear-bare && npm install
 
 pear touch          # genera tu link de upgrade -> pégalo en "upgrade" de package.json (si no, INVALID_URL)
@@ -75,18 +76,23 @@ humana. Es el límite real del track, no un fallo. Ocultarlo = perder en el paso
 
 | Servicio | Estado | Quién lo tiene | Nota |
 |---|---|---|---|
-| **Pear CLI** | `[verificar en vivo]` | Jonatin / Julián | Instalada en una máquina real, `command -v pear` responde |
-| **GitHub** | `[verificar]` | Repo público de la entrega | Público desde el primer commit. Cero secretos |
-| **Cursor Cloud Agents** | `[verificar]` | Jonatin / Julián | Dos agentes en paralelo (Agent-A / Agent-B). Ver `.cursor/` |
-| **Keet** (soporte Pear) | Canal oficial | — | Pear no tiene Discord. Mentores en la sala de Pear Development en Keet |
-| **Máquina(s) para seed** | `[verificar]` | Jonatin / Julián | Al menos una encendida y sembrando durante el juzgamiento |
+| **Pear CLI** | **OK en Windows** (v3.2.0) | Jonatin | Mac de Julián pendiente. PATH: `C:\Users\Jonatin\AppData\Local\Programs\pear` |
+| **GitHub** | **Público** | Los dos | Cero secretos |
+| **Cursor Cloud Agents** | Listo para Fase 1 | Jonatin / Julián | Agent-A / Agent-B. Ver `.cursor/` |
+| **Keet** (soporte Pear) | Canal oficial | — | Mentores en Pear Development (Keet). No hay Discord de Pear |
+| **Máquina para seed** | **Jonatin · Windows** | Jonatin | Juzgamiento dom 13:00–~17:00 ARG. Proceso vivo |
 
-### Falta confirmar en Fase 0
+### Fase 0 — operativo
 
-- [ ] Pear CLI instalada y `pear touch` genera link real (no el placeholder).
-- [ ] Cuál/es máquina/s quedan sembrando durante dom 13:00–17:00 (ARG).
-- [ ] Repo público creado y con acceso para los dos.
-- [ ] En qué plataformas compilamos el binario (mac/linux/win · arch).
+- [x] Pear CLI instalada en Windows (Jonatin): `C:\Users\Jonatin\AppData\Local\Programs\pear\pear.exe` · **v3.2.0**. Abrí una terminal nueva para PATH.
+- [x] `pear touch` → `pear://ta114oog37s3wfdwmp6wz7x4uucjoxckd7t4acxns7s33xbc7oeo` en `package.json` `upgrade`.
+- [x] Template `variant/daemon` copiado a este repo (`bin.mjs`, `app.js`, `scripts/`).
+- [x] Repo público.
+- [x] Seed de juzgamiento: **Jonatin**.
+- [x] Binarios: **win32** en host de Jonatin · **darwin** en host de Julián.
+- [x] Hora absoluta de arranque: **14:26 UTC-5 / 16:26 ARG**, **8 h** de build.
+- [ ] Pear CLI en Mac de Julián (Lock de B).
+- [ ] `pear seed` vivo en juzgamiento.
 
 ---
 
@@ -103,10 +109,10 @@ con su para-qué, y solo se usa si está en esta tabla.
 
 | Herramienta | Versión | Nota |
 |---|---|---|
-| Pear CLI | `[verificar]` | 3.2.0+ para `pear --menu` |
-| Node / npm | `[verificar]` | Para el tooling (Bare ≠ Node, pero el toolchain usa npm) |
-| git | `[verificar]` | |
-| ffmpeg | `[verificar]` | Para cortar/comprimir el video de 3 min |
+| Pear CLI | **3.2.0** (Windows) | `C:\Users\Jonatin\AppData\Local\Programs\pear\pear.exe` |
+| Node / npm | instalado | tooling; Bare ≠ Node |
+| git | instalado | |
+| ffmpeg | `[Julián]` | video 3 min |
 
 ---
 
