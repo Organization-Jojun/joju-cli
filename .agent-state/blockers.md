@@ -7,4 +7,5 @@
 
 | Fecha | Agente | Qué lo bloquea | Decisión temporal tomada | Qué se necesita para cerrarlo | Estado |
 |---|---|---|---|---|---|
-|  |  |  |  |  |  |
+| 2026-08-22 | Agent-A | `npm test` usa `brittle-bare` → `bare` no en PATH de cloud VM | Tests vía `node ./node_modules/bare-runtime/bin/bare ./node_modules/brittle/cmd.js test/index.js` | Agent-B actualiza script `test` en `package.json` | abierto |
+| 2026-08-22 | Agent-A | `pear stage/seed/install` desde máquina limpia | CLI y pipeline listos en repo; mock swarm para dev | Jonatin: Windows real + seed en juzgamiento | abierto |
