@@ -6,7 +6,7 @@
 |---|---|
 | **Estado actual** | `Fase 1 · Build — capa P2P + pipeline listos` |
 | **Rama** | `agent-b/fase1-p2p` |
-| **Último commit** | *(pendiente push de este bloque)* |
+| **Último commit** | `783fe6f` |
 | **Archivos modificados** | `src/p2p/*`, `src/deploy/*`, `src/update/*`, `scripts/stage.js`, `scripts/seed.js`, `package.json`, `test/*`, `out/linux-x64/`, `HANDOFF.md`, `README.md` |
 | **Contratos/interfaces cambiados** | API implementada en `src/p2p/` (sin tocar `src/contracts/`). Ver HANDOFF para wiring Agent-A. |
 | **Tests ejecutados** | `npm test` — 4/4 pass (topic, fixtures, mock). `npm run test:p2p` — DHT flaky en cloud VM. `npm run make` — linux-x64 OK. |
