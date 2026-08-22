@@ -6,7 +6,7 @@
 |---|---|
 | **Estado actual** | `Fase 1 · bloque Build — fixtures + comandos MVP contra mock` |
 | **Rama** | `agent-a/fase1-cli` |
-| **Último commit** | `(pendiente push)` |
+| **Último commit** | `d3dff6f` |
 | **Archivos modificados** | `bin.mjs`, `src/contracts/*`, `src/core/*`, `src/cli/index.js`, `src/commands/*`, `test/index.js`, `HANDOFF.md` |
 | **Contratos/interfaces cambiados** | `src/contracts/swarm.js` mock API (ver HANDOFF). `fixtures.js` topic/payload/peer-connected. |
 | **Tests ejecutados** | `node ./node_modules/bare-runtime/bin/bare ./node_modules/brittle/cmd.js test/index.js` → 7/7 pass. `npm start` → Updates disabled + CLI ready. CLI smoke join/paste/yank con `--storage`. |
