@@ -1,6 +1,10 @@
 # Jojun
 
-**Paste here. Receive there. Same room. No Discord, USB, or server.**
+<p align="center">
+  <img src="docs/banner-cli/jojun-banner.svg" alt="Jojun CLI splash: pixel pigeon and JOJUN wordmark" width="720" />
+</p>
+
+<p align="center"><strong>Paste here. Receive there. Same room. No Discord, USB, or server.</strong></p>
 
 Jojun is a **room clipboard** for two laptops: you **Connect** to a shared name, **Send** a snippet on one PC, **Receive** it on the other. Under the hood that is Hyperswarm `join` / `paste` / `yank`. The binary is a Pear app (`hello-pear-bare` **`variant/daemon`**): install with `pear install pear://…`, keep it current with P2P OTA.
 
@@ -191,7 +195,7 @@ src/core/               session files, PATH helper, updater
 src/contracts/          CLI ↔ P2P (setUseMock)
 src/p2p/                Hyperswarm + mock
 src/deploy/             pear stage/seed wrappers
-docs/banner-cli/        source design (ansi / txt / go)
+docs/banner-cli/        pixel splash (SVG for README + ansi / txt / go)
 docs/AGENT-PROMPT.md    paste into a coding agent to install Jojun
 ```
 
