@@ -1,5 +1,4 @@
-| Fecha | Agente | Qué lo bloquea | Decisión temporal tomada | Qué se necesita para cerrarlo | Estado |
+| Fecha | Agente | Qué lo bloquea | Decisión | Cierre | Estado |
 |---|---|---|---|---|---|
-| 2026-08-22 | Agent-B | `pear stage` real en cloud VM | Scripts listos; dry-run OK | Jonatin: `npm run stage` + `npm run seed` Windows | abierto |
-| 2026-08-22 | Agent-B | Test Hyperswarm DHT en cloud intermitente | `npm test` = unit+mock; `test:p2p` separado | Probar paste/yank en dos laptops | abierto |
-| 2026-08-22 | Integración | `pear install` desde máquina limpia | Pipeline + CLI integrados en `agent-a/integration` | Jonatin Windows en juzgamiento | abierto |
+| 2026-08-22 | Jonatin | `pear seed` / install limpio | Pipeline + make listos | Juzgamiento: seed vivo | abierto |
+| 2026-08-22 | Jonatin | Video 3 min | Julián fuera | Grabarlo en esta PC | abierto |

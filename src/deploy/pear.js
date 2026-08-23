@@ -40,7 +40,7 @@ function seed(link = DEFAULT_LINK, opts = {}) {
 
 function runPear(args, opts = {}) {
   return new Promise((resolve, reject) => {
-    const pearBin = process.env.PEAR_BIN || 'pear'
+    const pearBin = process.env.PEAR_BIN || (process.platform === 'win32' ? findWindowsPear() : 'pear')
     const child = spawn(pearBin, args, {
       cwd: opts.cwd || process.cwd(),
       stdio: opts.inherit ? 'inherit' : 'pipe',
@@ -77,6 +77,19 @@ function runPear(args, opts = {}) {
       }
     })
   })
+}
+
+function findWindowsPear() {
+  const fs = require('fs')
+  const os = require('os')
+  const candidates = [
+    path.join(os.homedir(), 'AppData', 'Local', 'Programs', 'pear', 'pear.exe'),
+    path.join(os.homedir(), 'AppData', 'Local', 'Programs', 'pear', 'pear.cmd')
+  ]
+  for (const candidate of candidates) {
+    if (fs.existsSync(candidate)) return candidate
+  }
+  return 'pear'
 }
 
 module.exports = { stage, seed, runPear, DEFAULT_LINK }

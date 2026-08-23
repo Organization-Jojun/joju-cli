@@ -2,20 +2,27 @@
 
 const swarm = require('../contracts')
 const { EVENT_PEER_CONNECTED } = require('../contracts/fixtures')
-const { ensureJoined } = require('./paste')
+const { emit } = require('../core/output')
+const { ensureJoined } = require('../core/ensure-joined')
 
 const DEFAULT_TIMEOUT_MS = 30_000
 
-async function runWait(timeoutMs = DEFAULT_TIMEOUT_MS) {
+async function runWait(timeoutMs = DEFAULT_TIMEOUT_MS, opts = {}) {
   await ensureJoined()
 
   const status = swarm.getStatus()
   if (status.peers > 0) {
-    console.log(`peer connected (${status.peers})`)
+    if (!opts.silent) {
+      emit(
+        opts.json,
+        { ok: true, action: 'wait', peers: status.peers },
+        `peer connected (${status.peers})`
+      )
+    }
     return
   }
 
-  return new Promise((resolve, reject) => {
+  await new Promise((resolve, reject) => {
     const timer = setTimeout(() => {
       cleanup()
       reject(new Error(`timed out waiting for peer after ${timeoutMs}ms`))
@@ -24,7 +31,13 @@ async function runWait(timeoutMs = DEFAULT_TIMEOUT_MS) {
     const onPeer = (event) => {
       if (event.type !== EVENT_PEER_CONNECTED) return
       cleanup()
-      console.log(`peer connected (${event.peers})`)
+      if (!opts.silent) {
+        emit(
+          opts.json,
+          { ok: true, action: 'wait', peers: event.peers },
+          `peer connected (${event.peers})`
+        )
+      }
       resolve()
     }
 

@@ -4,48 +4,97 @@ CLI Pear/Bare: pegás un blob en una máquina (`paste`) y lo sacás en la otra (
 
 Salimos de [`hello-pear-bare`](https://github.com/holepunchto/hello-pear-bare) rama **`variant/daemon`**.
 
-## Instalar
+Instalar (cuando el seed esté vivo):
 
-```bash
+```
 pear install pear://ta114oog37s3wfdwmp6wz7x4uucjoxckd7t4acxns7s33xbc7oeo
 ```
 
-> El link debe estar **sembrado** (`npm run seed`) durante el juzgamiento. Seed = Jonatin (Windows).
+## Windows (esta máquina — Jonatin)
 
-## Dev
+Pear CLI v3.2.0 suele estar en:
 
-```bash
+`C:\Users\Jonatin\AppData\Local\Programs\pear\pear.exe`
+
+Abrí una terminal **nueva** si acabás de instalarla, para que entre en el PATH.
+
+```powershell
+cd C:\Users\Jonatin\Documents\JonatinProjects\HackathonJonjun\joju-cli
 npm install
-npm start                    # one-shot CLI, updates off
-npm test                     # unit + mock P2P
-npm run test:p2p             # Hyperswarm integration (needs DHT)
-npm run make                 # out/<platform>-<arch>
+
+# tests (mock, sin DHT)
+npm test
+
+# smoke CLI (updates off)
+npm start
+
+# help
+node .\node_modules\bare-runtime\bin\bare bin.mjs --no-updates --help
 ```
 
-## Deploy
+Topic de fixtures (64 hex):
 
-```bash
-export PATH="$HOME/.pear/bin:$PATH"
-npm run stage                # sync cambios al pear:// link
-npm run seed                 # mantener vivo durante juzgamiento
+```
+68656c6c6f2d6a6f6a756e000000000000000000000000000000000000000000
 ```
 
-Errores de OTA → `<storage>/updates.log` (no en la terminal).
+### Probar en una sola terminal (mock, sin red)
 
-## P2P (contrato A↔B)
+```powershell
+$env:JOJUN_USE_MOCK_P2P = "1"
+$storage = "$env:TEMP\jojun-dev"
+$topic = "68656c6c6f2d6a6f6a756e000000000000000000000000000000000000000000"
+$bare = ".\node_modules\bare-runtime\bin\bare"
 
-```js
-const p2p = require('./src/p2p')   // prod
-// const p2p = require('./src/p2p/mock')  // offline dev
-
-await p2p.join(topicHex)
-p2p.send(bytes)
-p2p.onMessage(fn)
-p2p.on('peer-connected', fn)
-await p2p.leave()
-p2p.status()
+node $bare bin.mjs --no-updates --storage $storage join $topic
+"hello jojun" | node $bare bin.mjs --no-updates --storage $storage paste
+node $bare bin.mjs --no-updates --storage $storage yank
 ```
 
-Fixtures: `src/p2p/fixtures.js`.
+### Probar P2P real (dos ventanas, mismo topic, **sin** `JOJUN_USE_MOCK_P2P`)
 
-Corte vivo: [`PROYECTO.md`](PROYECTO.md). Reloj y ownership: [`docs/PLAN.md`](docs/PLAN.md).
+Ventana A (espera un blob):
+
+```powershell
+$topic = "68656c6c6f2d6a6f6a756e000000000000000000000000000000000000000000"
+$bare = ".\node_modules\bare-runtime\bin\bare"
+node $bare bin.mjs --no-updates --storage "$env:TEMP\jojun-a" join $topic
+node $bare bin.mjs --no-updates --storage "$env:TEMP\jojun-a" yank --timeout 60000
+```
+
+Ventana B (pega):
+
+```powershell
+$topic = "68656c6c6f2d6a6f6a756e000000000000000000000000000000000000000000"
+$bare = ".\node_modules\bare-runtime\bin\bare"
+node $bare bin.mjs --no-updates --storage "$env:TEMP\jojun-b" join $topic
+"hello jojun" | node $bare bin.mjs --no-updates --storage "$env:TEMP\jojun-b" paste --timeout 60000
+```
+
+`wait` bloquea hasta que hay un peer. `--json` imprime estado en una línea JSON (yank sigue siendo bytes crudos en stdout).
+
+### Binario y deploy (requisito duro del track)
+
+```powershell
+npm run make                 # out\win32-x64\jojun.exe
+npm run stage -- --dry-run
+npm run stage                # escribe al pear:// (identidad Pear de esta PC)
+npm run seed                 # proceso vivo — dejarlo encendido en juzgamiento
+```
+
+OTA: el comando sale; el updater es daemon. Logs: `<storage>\updates.log`.
+
+## Comandos
+
+| Acción | Qué hace |
+|---|---|
+| `join <topic>` | entra al topic (64 hex) |
+| `paste` | stdin → swarm (espera peer) |
+| `yank` | último blob a stdout (espera si hace falta) |
+| `wait` | espera un peer |
+| `leave` | sale |
+| `keys` | lista las cinco |
+
+Flags globales: `--no-updates`, `--storage`, `--json`, `--help`, `--version`.
+
+Corte vivo: [`PROYECTO.md`](PROYECTO.md).

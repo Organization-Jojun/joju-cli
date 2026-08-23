@@ -27,7 +27,7 @@ function createCommands({ appName, isDev, getFlags, onBeforeAction }) {
     async () => {
       await onBeforeAction(joinCmd)
       prepareSession(joinCmd)
-      await runJoin(joinCmd.args.topic)
+      await runJoin(joinCmd.args.topic, { json: getFlags(joinCmd).json })
       Bare.exit(0)
     }
   )
@@ -36,10 +36,15 @@ function createCommands({ appName, isDev, getFlags, onBeforeAction }) {
     'paste',
     summary('Paste stdin to the swarm'),
     description('Read stdin and send the blob to connected peers.'),
+    flag('--timeout|-t [ms=30000]', 'wait for a peer before sending'),
     async () => {
       await onBeforeAction(pasteCmd)
       prepareSession(pasteCmd)
-      await runPaste()
+      const flags = getFlags(pasteCmd)
+      await runPaste({
+        json: flags.json,
+        timeout: flags.timeout ? Number(flags.timeout) : 30_000
+      })
       Bare.exit(0)
     }
   )
@@ -48,10 +53,14 @@ function createCommands({ appName, isDev, getFlags, onBeforeAction }) {
     'yank',
     summary('Yank the last blob to stdout'),
     description('Write the most recently received blob to stdout.'),
+    flag('--timeout|-t [ms=30000]', 'wait for an incoming blob'),
     async () => {
       await onBeforeAction(yankCmd)
       prepareSession(yankCmd)
-      runYank()
+      const flags = getFlags(yankCmd)
+      await runYank({
+        timeout: flags.timeout ? Number(flags.timeout) : 30_000
+      })
       Bare.exit(0)
     }
   )
@@ -66,7 +75,7 @@ function createCommands({ appName, isDev, getFlags, onBeforeAction }) {
       prepareSession(waitCmd)
       const flags = getFlags(waitCmd)
       const timeout = flags.timeout ? Number(flags.timeout) : DEFAULT_TIMEOUT_MS
-      await runWait(timeout)
+      await runWait(timeout, { json: flags.json })
       Bare.exit(0)
     }
   )
@@ -78,7 +87,7 @@ function createCommands({ appName, isDev, getFlags, onBeforeAction }) {
     async () => {
       await onBeforeAction(leaveCmd)
       prepareSession(leaveCmd)
-      await runLeave()
+      await runLeave({ json: getFlags(leaveCmd).json })
       Bare.exit(0)
     }
   )
@@ -107,6 +116,7 @@ function createRootCommand({ appName, descriptionText, subcommands }) {
     flag('--storage <dir>', 'custom storage directory'),
     flag('--no-updates', 'disable OTA updates for this run'),
     flag('--update-window <ms>', 'updater wait in milliseconds'),
+    flag('--json', 'machine-readable status on stderr-safe stdout lines'),
     flag('--updater', 'run updater daemon').hide(),
     joinCmd,
     pasteCmd,

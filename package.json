@@ -8,8 +8,8 @@
   "upgrade": "pear://ta114oog37s3wfdwmp6wz7x4uucjoxckd7t4acxns7s33xbc7oeo",
   "scripts": {
     "format": "prettier . --write",
-    "test": "PATH=\"$PWD/node_modules/bare-runtime/bin:$PATH\" brittle-bare test/index.js",
-    "test:p2p": "PATH=\"$PWD/node_modules/bare-runtime/bin:$PATH\" brittle-bare test/p2p-hyperswarm.js",
+    "test": "node ./node_modules/bare-runtime/bin/bare ./node_modules/brittle/cmd.js test/index.js",
+    "test:p2p": "node ./node_modules/bare-runtime/bin/bare ./node_modules/brittle/cmd.js test/p2p-hyperswarm.js",
     "lint": "prettier . --check && lunte",
     "start": "node ./node_modules/bare-runtime/bin/bare bin.mjs --no-updates",
     "stage": "node scripts/stage.js",
@@ -26,6 +26,7 @@
     "bare-console": "^6.2.0",
     "bare-events": "^2.8.1",
     "bare-daemon": "^1.2.4",
+    "bare-env": "^3.0.0",
     "bare-file-logger": "^1.2.1",
     "bare-fs": "^4.7.2",
     "bare-os": "^3.9.0",

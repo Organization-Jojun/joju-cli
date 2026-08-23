@@ -1,7 +1,7 @@
 'use strict'
 
 /**
- * Adapter: Agent-A command surface → Agent-B `src/p2p` (Hyperswarm) o `src/p2p/mock`.
+ * Adapter: CLI → `src/p2p` (Hyperswarm) o `src/p2p/mock`.
  * Set `JOJUN_USE_MOCK_P2P=1` para tests/dev sin DHT.
  */
 const env = require('bare-env')
@@ -14,6 +14,7 @@ const p2p =
     : require('../p2p')
 
 let lastBlob = null
+let messageHooked = false
 
 function toBuffer(bytes) {
   if (typeof bytes === 'string') return Buffer.from(bytes, 'utf8')
@@ -21,12 +22,19 @@ function toBuffer(bytes) {
   throw new Error('payload must be a string or buffer')
 }
 
-async function join(topicHex) {
-  parseTopic(topicHex)
-  await p2p.join(topicHex)
+function hookMessages() {
+  if (messageHooked) return
+  messageHooked = true
   p2p.onMessage((data) => {
     lastBlob = Buffer.isBuffer(data) ? data : Buffer.from(data)
   })
+}
+
+async function join(topicHex) {
+  parseTopic(topicHex)
+  await p2p.join(topicHex)
+  messageHooked = false
+  hookMessages()
   const st = p2p.status()
   return { topic: st.topic, joined: st.joined }
 }
@@ -34,11 +42,12 @@ async function join(topicHex) {
 function send(bytes) {
   const buf = toBuffer(bytes)
   lastBlob = buf
-  p2p.send(buf)
-  return buf.length
+  const ok = p2p.send(buf)
+  return { length: buf.length, delivered: ok !== false }
 }
 
 function onMessage(handler) {
+  hookMessages()
   return p2p.onMessage(handler)
 }
 
@@ -56,6 +65,7 @@ function onPeer(handler) {
 async function leave() {
   await p2p.leave()
   lastBlob = null
+  messageHooked = false
 }
 
 function getStatus() {
@@ -71,9 +81,36 @@ function getLastBlob() {
   return lastBlob
 }
 
+function waitForBlob(timeoutMs) {
+  if (lastBlob !== null) return Promise.resolve(lastBlob)
+
+  hookMessages()
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      cleanup()
+      reject(new Error(`timed out waiting for blob after ${timeoutMs}ms`))
+    }, timeoutMs)
+
+    const onData = (data) => {
+      cleanup()
+      const buf = Buffer.isBuffer(data) ? data : Buffer.from(data)
+      lastBlob = buf
+      resolve(buf)
+    }
+
+    const cleanup = () => {
+      clearTimeout(timer)
+      if (typeof unsubscribe === 'function') unsubscribe()
+    }
+
+    const unsubscribe = p2p.onMessage(onData)
+  })
+}
+
 async function _resetForTests() {
   await p2p.leave()
   lastBlob = null
+  messageHooked = false
 }
 
 module.exports = {
@@ -84,5 +121,6 @@ module.exports = {
   leave,
   getStatus,
   getLastBlob,
+  waitForBlob,
   _resetForTests
 }

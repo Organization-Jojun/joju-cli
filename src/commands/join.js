@@ -2,11 +2,16 @@
 
 const swarm = require('../contracts')
 const session = require('../core/session')
+const { emit } = require('../core/output')
 
-async function runJoin(topic) {
+async function runJoin(topic, opts = {}) {
   const result = await swarm.join(topic)
   session.saveJoin(result.topic)
-  console.log(`joined topic ${result.topic.slice(0, 8)}…`)
+  emit(
+    opts.json,
+    { ok: true, action: 'join', topic: result.topic },
+    `joined topic ${result.topic.slice(0, 8)}…`
+  )
 }
 
 module.exports = { runJoin }

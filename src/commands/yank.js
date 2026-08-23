@@ -2,13 +2,17 @@
 
 const swarm = require('../contracts')
 const session = require('../core/session')
+const { writeStdout } = require('../core/stdout')
+const { ensureJoined } = require('../core/ensure-joined')
 
-function runYank() {
-  const blob = swarm.getLastBlob() || session.loadBlob()
+async function runYank(opts = {}) {
+  let blob = swarm.getLastBlob()
+  if (blob === null) blob = session.loadBlob()
   if (blob === null) {
-    throw new Error('no blob received yet')
+    await ensureJoined()
+    blob = await swarm.waitForBlob(opts.timeout || 30_000)
+    session.saveBlob(blob)
   }
-  const { writeStdout } = require('../core/stdout')
   writeStdout(blob)
 }
 

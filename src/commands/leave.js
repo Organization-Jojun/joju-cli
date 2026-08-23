@@ -2,11 +2,12 @@
 
 const swarm = require('../contracts')
 const session = require('../core/session')
+const { emit } = require('../core/output')
 
-async function runLeave() {
+async function runLeave(opts = {}) {
   await swarm.leave()
   session.clear()
-  console.log('left topic')
+  emit(opts.json, { ok: true, action: 'leave' }, 'left topic')
 }
 
 module.exports = { runLeave }

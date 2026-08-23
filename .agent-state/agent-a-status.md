@@ -1,16 +1,13 @@
-# Estado — Agent-A · Jonatin (lógica del CLI + integración)
+# Estado — Agent-A · Jonatin (producto completo en Windows)
 
 | Campo | Valor |
 |---|---|
-| **Estado actual** | `Integración A+B cerrada en agent-a/integration` |
+| **Estado actual** | Producto listo para probar y stage/seed en esta PC |
 | **Rama** | `agent-a/integration` |
-| **Último commit** | `dca3a3f` |
-| **Archivos modificados** | `src/contracts/*` adapter, `src/commands/*` async, `test/index.js` merged, `HANDOFF.md` |
-| **Contratos/interfaces cambiados** | `swarm.js` → delega `p2p`/`mock`. Fixtures = `p2p/fixtures.js`. |
-| **Tests ejecutados** | `npm test` 10/10. CLI smoke join/paste/yank con `JOJUN_USE_MOCK_P2P=1`. |
-| **Bloqueos** | P2P real + deploy en máquinas humanas (ver blockers.md) |
-| **Próximos pasos** | Merge a main tras smoke real Jonatin+Julián · `--json` si hay tiempo |
+| **Tests** | `npm test` 10/10 · smoke mock join/paste/yank · `pear stage --dry-run` OK · `npm run make` win32-x64 |
+| **Bloqueos** | `pear seed` + `pear install` limpio + video = vos en juzgamiento |
+| **Próximos** | `npm run stage` real · `npm run seed` vivo · grabar demo |
 
 ## Bitácora
 
-- `02:45 UTC` — Integración con Agent-B: contrato cableado, tests green.
+- Windows: scripts de test, `--json`, paste espera peer, yank espera blob, README de prueba, binario `out/win32-x64`.

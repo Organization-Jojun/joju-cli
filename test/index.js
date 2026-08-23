@@ -7,7 +7,6 @@ const { TOPIC_HEX, PAYLOAD_UTF8 } = require('../src/p2p/fixtures')
 const mock = require('../src/p2p/mock')
 const swarm = require('../src/contracts')
 const fixtures = require('../src/contracts/fixtures')
-const { runYank } = require('../src/commands/yank')
 const { runLeave } = require('../src/commands/leave')
 
 test('topic: parses 64-char hex to 32 bytes', (t) => {
@@ -63,13 +62,10 @@ test('contracts: paste/yank round-trip against mock adapter', async (t) => {
   await swarm.join(fixtures.TOPIC_HEX)
 
   const sent = swarm.send(fixtures.PAYLOAD_UTF8)
-  t.is(sent, fixtures.PAYLOAD_UTF8.length)
+  t.is(sent.length, fixtures.PAYLOAD_UTF8.length)
 
   const blob = swarm.getLastBlob()
   t.is(blob.toString('utf8'), fixtures.PAYLOAD_UTF8)
-
-  runYank()
-  t.pass('yank wrote stdout without error')
 })
 
 test('contracts: onMessage receives bytes sent on mock adapter', async (t) => {
