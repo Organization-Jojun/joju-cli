@@ -51,13 +51,15 @@ First prompt: already set up, or start from scratch (6-step tutorial). Tutorial 
 |---|---|---|---|
 | Connect | `c` / `1` | `/connect` `/conectar` | `join` |
 | Send message | `e` / `2` | `/send` `/enviar` | `paste` |
-| Receive | `r` / `3` | `/receive` `/recibir` | `yank` |
+| Receive (replay) | `r` / `3` | `/receive` `/recibir` | `yank` |
 | Wait for the other | `w` / `4` | `/wait` `/esperar` | `wait` |
 | Disconnect | `d` / `5` | `/disconnect` `/desconectar` | `leave` |
 
 `?` help · `q` / Ctrl+C quit (leaves the swarm) · `/settings` room, practice/network, wait, language · `/advanced` topic hex and script commands. Expert aliases: `/join` `/paste` `/yank` `/leave`.
 
-Two PCs: both **Connect** to the **same room name**. Receiver: **Receive**. Sender: **Send message**.
+Two PCs: both **Connect** to the **same room name**, then the sender picks **Send message**. Messages **appear on their own** on the other PC — the receiver does not have to press anything. `r` / **Receive** replays the last message you already got; **Wait** (`w`) is what blocks for the other PC. Turn the automatic display off in `/settings` → `auto` if you would rather pull with `r`.
+
+One message is one write on the wire, with no length prefix, so keep pastes to a snippet. Something large enough to be split by the transport arrives as several separate messages.
 
 ---
 
@@ -74,8 +76,23 @@ Each of these does work and **exits** (Pear `variant/daemon` shape):
 | `jojun leave` | Leave and clear local session |
 | `jojun keys` | Print: join paste yank wait leave |
 | `jojun --menu` | Numbered 1–5 menu, then exit |
+| `jojun uninstall` | Remove Jojun from this machine (asks first) |
 
 Flags: `--no-updates` · `--storage <dir>` · `--json` · `--timeout` / `-t` · `--help` · `--version`.
+Root flags go **before** the subcommand: `jojun --json uninstall`.
+
+### Removing Jojun
+
+Always look before you delete:
+
+```bash
+jojun uninstall --dry-run   # report the plan, delete nothing
+jojun uninstall             # same report, then asks y/N
+```
+
+It removes the storage directory (`session.json`, `last.blob`, `ui.json`, `updates.log`) and, on Windows, the user PATH entry Jojun added — every other PATH entry is preserved. A `jojun` binary Jojun did not place (the copy `docs/AGENT-PROMPT.md` suggests putting on your PATH by hand) is **reported but kept**; add `--binaries` to remove those too. `--yes` skips the prompt for scripts.
+
+It never touches the Pear runtime or Pear's own app entry. On Windows a running `jojun.exe` cannot delete itself, so it is reported for manual removal after everything else is gone.
 
 Test room hex (same as Enter in the UI):
 

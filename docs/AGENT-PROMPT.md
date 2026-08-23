@@ -68,5 +68,13 @@ There is no server and no history. If nobody is Receiving, Send can be lost.
 - peers stuck at 0: both not on live mode, or different room names, or firewall; Wait (w) up to 30s.
 - pear install never finishes: seed is down; use git+make.
 
+## 7. Removing it again
+Jojun uninstalls itself. Do not hand the human `rm -rf` commands.
+  jojun uninstall --dry-run   # prints exactly what it would delete, deletes nothing
+  jojun uninstall             # same report, then asks y/N
+It deletes its storage dir and, on Windows, only its own user PATH entry.
+A jojun binary you copied onto PATH by hand is reported but kept; add --binaries to remove it too.
+It never removes Pear.
+
 Do not open a PR. Do not change product code unless install is broken on this machine.
 ```

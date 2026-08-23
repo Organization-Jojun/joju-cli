@@ -9,8 +9,12 @@ const { runPaste } = require('../commands/paste')
 const { runYank } = require('../commands/yank')
 const { runWait, DEFAULT_TIMEOUT_MS } = require('../commands/wait')
 const { runLeave } = require('../commands/leave')
+const { runUninstall } = require('../commands/uninstall')
 
+// The five room actions. `jojun keys` prints exactly these, so nothing else
+// belongs here; ONE_SHOT is what the entrypoint routes on.
 const ACTIONS = ['join', 'paste', 'yank', 'wait', 'leave']
+const ONE_SHOT = [...ACTIONS, 'keys', 'uninstall']
 
 function createCommands({ appName, isDev, getFlags, onBeforeAction }) {
   function prepareSession(cmd) {
@@ -103,6 +107,33 @@ function createCommands({ appName, isDev, getFlags, onBeforeAction }) {
     }
   )
 
+  const uninstallCmd = command(
+    'uninstall',
+    summary('Remove Jojun from this machine'),
+    description('Report what Jojun installed here, then remove it after confirmation.'),
+    flag('--dry-run', 'report the plan and remove nothing'),
+    flag('--yes|-y', 'confirm without prompting'),
+    flag('--binaries', 'also remove binaries Jojun did not place'),
+    async () => {
+      // Route through the flag --no-updates already uses, so the OTA daemon
+      // cannot recreate the storage directory we are about to delete.
+      uninstallCmd.flags.noUpdates = true
+      await onBeforeAction(uninstallCmd)
+      prepareSession(uninstallCmd)
+      const flags = getFlags(uninstallCmd)
+      const result = await runUninstall({
+        flags,
+        appName,
+        isDev,
+        json: flags.json,
+        dryRun: !!flags.dryRun,
+        yes: !!flags.yes,
+        removeBinaries: !!flags.binaries
+      })
+      Bare.exit(result.exitCode)
+    }
+  )
+
   const uiCmd = command(
     'ui',
     summary('Interactive session (splash + slash commands)'),
@@ -124,6 +155,7 @@ function createCommands({ appName, isDev, getFlags, onBeforeAction }) {
     waitCmd,
     leaveCmd,
     keysCmd,
+    uninstallCmd,
     uiCmd,
     tuiCmd,
     ACTIONS
@@ -131,7 +163,7 @@ function createCommands({ appName, isDev, getFlags, onBeforeAction }) {
 }
 
 function createRootCommand({ appName, descriptionText, subcommands }) {
-  const { joinCmd, pasteCmd, yankCmd, waitCmd, leaveCmd, keysCmd, uiCmd, tuiCmd } =
+  const { joinCmd, pasteCmd, yankCmd, waitCmd, leaveCmd, keysCmd, uninstallCmd, uiCmd, tuiCmd } =
     subcommands
 
   return command(
@@ -150,9 +182,10 @@ function createRootCommand({ appName, descriptionText, subcommands }) {
     waitCmd,
     leaveCmd,
     keysCmd,
+    uninstallCmd,
     uiCmd,
     tuiCmd
   )
 }
 
-module.exports = { createCommands, createRootCommand, ACTIONS }
+module.exports = { createCommands, createRootCommand, ACTIONS, ONE_SHOT }

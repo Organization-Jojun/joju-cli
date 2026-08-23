@@ -51,6 +51,8 @@ function getRoom() {
 }
 
 module.exports = {
+  // Hyperswarm never delivers a sender its own writes.
+  loopsBack: false,
   join,
   send,
   flush,

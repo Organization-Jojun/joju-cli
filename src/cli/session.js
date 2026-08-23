@@ -20,8 +20,14 @@ const { nameToTopic, topicToName } = require('./room-name')
 const { loadPrefs, savePrefs } = require('./prefs')
 const { runTutorial } = require('./tutorial')
 
-let prefs = { lang: 'en', timeoutMs: 30_000, mock: null, roomName: '' }
+let prefs = { lang: 'en', timeoutMs: 30_000, mock: null, roomName: '', autoReceive: true }
 let storageDir = null
+let unsubscribeReceived = null
+// Depth, not a boolean: doSettings() and the tutorial nest prompts inside a
+// prompt, and an inner one finishing must not unblock output for the outer.
+let canonicalReads = 0
+let pendingIncoming = []
+let atPrompt = false
 
 function persist(patch) {
   prefs = { ...prefs, ...patch }
@@ -132,9 +138,57 @@ function readRawChunk() {
 async function promptLine(label) {
   const wasRaw = trySetRaw(false)
   write(label)
-  const text = await readLine()
-  if (wasRaw) trySetRaw(true)
-  return text
+  canonicalReads++
+  try {
+    return await readLine()
+  } finally {
+    canonicalReads--
+    if (wasRaw) trySetRaw(true)
+    flushIncoming()
+  }
+}
+
+function autoReceiveOn() {
+  return prefs.autoReceive !== false
+}
+
+function renderIncoming(bytes) {
+  if (atPrompt) write('\n')
+  log(`${t('received')} ${bytes.length} ${t('bytes')}`)
+  log(truncateBlob(bytes))
+  if (atPrompt) write(t('prompt'))
+}
+
+function flushIncoming() {
+  if (canonicalReads > 0 || pendingIncoming.length === 0) return
+  const queued = pendingIncoming
+  pendingIncoming = []
+  for (const bytes of queued) renderIncoming(bytes)
+}
+
+function onIncoming(bytes) {
+  if (!autoReceiveOn()) return
+  if (canonicalReads > 0) {
+    pendingIncoming.push(bytes)
+    return
+  }
+  renderIncoming(bytes)
+}
+
+function subscribeIncoming() {
+  releaseIncoming()
+  try {
+    unsubscribeReceived = swarm.onReceived(onIncoming)
+  } catch {
+    // not joined; nothing to subscribe to yet
+    unsubscribeReceived = null
+  }
+}
+
+function releaseIncoming() {
+  if (typeof unsubscribeReceived === 'function') unsubscribeReceived()
+  unsubscribeReceived = null
+  pendingIncoming = []
 }
 
 function truncateBlob(buf) {
@@ -162,6 +216,7 @@ async function doConnect(arg, opts = {}) {
   persist({ roomName: display })
   return safe(async () => {
     await runJoin(topic, { json: false })
+    subscribeIncoming()
     log(formatStatus())
     return display
   })
@@ -193,6 +248,19 @@ async function doSend(arg, opts = {}) {
 }
 
 async function doReceive() {
+  // With auto-receive on, messages have already been shown as they arrived, so
+  // this replays the newest instead of blocking for one that is already here.
+  if (autoReceiveOn()) {
+    const entry = swarm.getLastReceived()
+    if (entry === null) {
+      note(t('noBlobYet'))
+      return
+    }
+    log(`${t('received')} ${entry.bytes.length} ${t('bytes')}`)
+    log(truncateBlob(entry.bytes))
+    return
+  }
+
   await safe(async () => {
     note(t('waitingMsg'))
     const blob = await runYank({ timeout: timeoutMs(), toStdout: false })
@@ -215,6 +283,7 @@ async function doWait() {
 
 async function doDisconnect() {
   await safe(async () => {
+    releaseIncoming()
     await runLeave({ json: false })
     log(formatStatus())
   })
@@ -285,6 +354,7 @@ async function doSettings() {
   log(`  ${t('settingsNet')}: ${swarm.isUsingMock() ? t('statusMock') : t('statusLive')}`)
   log(`  ${t('settingsWait')}: ${Math.round(timeoutMs() / 1000)}`)
   log(`  ${t('settingsLang')}: ${getLang()}`)
+  log(`  ${t('settingsAuto')}: ${autoReceiveOn() ? t('settingsAutoOn') : t('settingsAutoOff')}`)
   const choice = (await promptLine(t('settingsPrompt'))).toLowerCase()
   if (choice === 'room' || choice === 'sala') {
     await doConnect('')
@@ -305,6 +375,13 @@ async function doSettings() {
   if (choice === 'wait' || choice === 'espera') {
     const sec = Number(await promptLine(t('settingsWaitPrompt')))
     if (sec > 0) persist({ timeoutMs: sec * 1000 })
+    return
+  }
+  if (choice === 'auto' || choice === 'autorecibir') {
+    // Only rendering is gated; the subscription stays up so history keeps
+    // filling and Receive still has something to show when it is off.
+    persist({ autoReceive: !autoReceiveOn() })
+    log(autoReceiveOn() ? t('settingsAutoNowOn') : t('settingsAutoNowOff'))
     return
   }
   if (choice === 'language' || choice === 'idioma') {
@@ -423,7 +500,16 @@ async function dispatchIdle(token) {
 async function loopLineMode(version) {
   while (true) {
     write(t('prompt'))
-    const line = await readLine()
+    atPrompt = true
+    canonicalReads++
+    let line
+    try {
+      line = await readLine()
+    } finally {
+      canonicalReads--
+      atPrompt = false
+    }
+    flushIncoming()
     const result = await dispatchIdle(line)
     if (result === 'quit') return
     if (result === 'clear') clearScreen(version)
@@ -434,7 +520,13 @@ async function loopRawMode(version) {
   trySetRaw(true)
   write(t('prompt'))
   while (true) {
-    const chunk = await readRawChunk()
+    atPrompt = true
+    let chunk
+    try {
+      chunk = await readRawChunk()
+    } finally {
+      atPrompt = false
+    }
     const b = chunk[0]
     if (b === 3) return
     if (b === 9) {
@@ -454,8 +546,15 @@ async function loopRawMode(version) {
     if (ch === '/') {
       trySetRaw(false)
       write('/')
-      const rest = await readLine()
-      trySetRaw(true)
+      canonicalReads++
+      let rest
+      try {
+        rest = await readLine()
+      } finally {
+        canonicalReads--
+        trySetRaw(true)
+      }
+      flushIncoming()
       const result = await runSlash('/' + rest)
       if (result === 'quit') return
       if (result === 'clear') clearScreen(version)
@@ -527,6 +626,7 @@ async function runSession({ flags, appName, isDev, version }) {
     else await loopLineMode(version)
   } finally {
     trySetRaw(false)
+    releaseIncoming()
     try {
       await swarm.leave()
     } catch {

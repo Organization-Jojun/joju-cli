@@ -3,7 +3,7 @@
 const fs = require('bare-fs')
 const path = require('bare-path')
 
-const DEFAULTS = { lang: 'en', timeoutMs: 30_000, mock: null, roomName: '' }
+const DEFAULTS = { lang: 'en', timeoutMs: 30_000, mock: null, roomName: '', autoReceive: true }
 
 function prefsPath(storageDir) {
   return path.join(storageDir, 'ui.json')

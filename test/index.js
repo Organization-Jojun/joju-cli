@@ -197,7 +197,9 @@ test('slash: unknown and prefix suggest', (t) => {
 
 test('human-error: English default; Spanish Colombian optional', (t) => {
   setLang('en')
-  t.ok(/Connect to a room first/.test(humanError(new Error('not joined to a topic; run join first'))))
+  t.ok(
+    /Connect to a room first/.test(humanError(new Error('not joined to a topic; run join first')))
+  )
   t.ok(/Nobody in the room/.test(humanError(new Error('timed out waiting for peer after 30000ms'))))
   setLang('es')
   t.ok(/conéctate|conectate/i.test(humanError(new Error('not joined to a topic'))))
@@ -234,7 +236,451 @@ test('contracts: setUseMock is a real switch (stays mock in unit tests)', async 
 const { pathHasDir } = require('../src/core/path-install')
 
 test('path-install: pathHasDir matches Windows dirs', (t) => {
-  t.ok(pathHasDir('C:\\foo;C:\\Users\\me\\AppData\\Local\\Programs\\Jojun', 'C:\\Users\\me\\AppData\\Local\\Programs\\Jojun'))
-  t.ok(pathHasDir('C:\\foo;C:\\Users\\me\\AppData\\Local\\Programs\\Jojun\\', 'C:\\Users\\me\\AppData\\Local\\Programs\\Jojun'))
+  t.ok(
+    pathHasDir(
+      'C:\\foo;C:\\Users\\me\\AppData\\Local\\Programs\\Jojun',
+      'C:\\Users\\me\\AppData\\Local\\Programs\\Jojun'
+    )
+  )
+  t.ok(
+    pathHasDir(
+      'C:\\foo;C:\\Users\\me\\AppData\\Local\\Programs\\Jojun\\',
+      'C:\\Users\\me\\AppData\\Local\\Programs\\Jojun'
+    )
+  )
   t.ok(!pathHasDir('C:\\foo;C:\\bar', 'C:\\Users\\me\\AppData\\Local\\Programs\\Jojun'))
+})
+
+const fsTest = require('bare-fs')
+const osTest = require('bare-os')
+const pathTest = require('bare-path')
+const { isWindows } = require('which-runtime')
+const { removeFromPathValue } = require('../src/core/path-install')
+const uninstall = require('../src/commands/uninstall')
+
+const SEP = isWindows ? ';' : ':'
+const TARGET = isWindows ? 'C:\\Programs\\Jojun' : '/opt/jojun'
+const OTHER_A = isWindows ? 'C:\\foo' : '/usr/bin'
+const OTHER_B = isWindows ? 'C:\\bar' : '/usr/local/bin'
+
+function tmpStorage(name) {
+  const dir = pathTest.join(osTest.tmpdir(), 'jojun-test-' + name + '-' + Date.now())
+  fsTest.mkdirSync(dir, { recursive: true })
+  return dir
+}
+
+function capture(fn) {
+  const original = console.log
+  const lines = []
+  console.log = (...args) => lines.push(args.join(' '))
+  const restore = () => {
+    console.log = original
+  }
+  return Promise.resolve()
+    .then(fn)
+    .then(
+      (result) => {
+        restore()
+        return { result, lines }
+      },
+      (err) => {
+        restore()
+        throw err
+      }
+    )
+}
+
+test('path-install: removeFromPathValue drops the entry and keeps the rest in order', (t) => {
+  const value = [OTHER_A, TARGET, OTHER_B].join(SEP)
+  const out = removeFromPathValue(value, TARGET)
+
+  t.is(out.removed, true)
+  t.is(out.value, [OTHER_A, OTHER_B].join(SEP))
+  t.is(out.value.split(SEP)[0], OTHER_A, 'order preserved')
+  t.is(out.value.split(SEP)[1], OTHER_B, 'order preserved')
+})
+
+test('path-install: removeFromPathValue removes every duplicate', (t) => {
+  const value = [OTHER_A, TARGET, OTHER_B, TARGET].join(SEP)
+  const out = removeFromPathValue(value, TARGET)
+
+  t.is(out.removed, true)
+  t.is(out.value, [OTHER_A, OTHER_B].join(SEP))
+})
+
+test('path-install: removeFromPathValue ignores trailing separator and case', (t) => {
+  const sep = isWindows ? '\\' : '/'
+  const stored = TARGET + sep
+  t.is(removeFromPathValue([OTHER_A, stored].join(SEP), TARGET).removed, true)
+  t.is(removeFromPathValue([OTHER_A, TARGET.toUpperCase()].join(SEP), TARGET).removed, true)
+})
+
+test('path-install: removeFromPathValue leaves a non-matching value untouched', (t) => {
+  const value = [OTHER_A, OTHER_B].join(SEP)
+  const out = removeFromPathValue(value, TARGET)
+
+  t.is(out.removed, false)
+  t.is(out.value, value, 'returned byte-for-byte')
+})
+
+test('path-install: removeFromPathValue handles empty and single-entry values', (t) => {
+  const empty = removeFromPathValue('', TARGET)
+  t.is(empty.removed, false)
+  t.is(empty.value, '')
+
+  const single = removeFromPathValue(TARGET, TARGET)
+  t.is(single.removed, true)
+  t.is(single.value, '')
+
+  const noDir = removeFromPathValue([OTHER_A].join(SEP), '')
+  t.is(noDir.removed, false)
+})
+
+test('uninstall: discover reports the storage directory and its contents', (t) => {
+  const dir = tmpStorage('discover')
+  fsTest.writeFileSync(pathTest.join(dir, 'ui.json'), '{}')
+  fsTest.writeFileSync(pathTest.join(dir, 'updates.log'), 'x')
+
+  const facts = uninstall.discover({ flags: { storage: dir }, appName: 'Jojun', isDev: false })
+
+  t.is(facts.storage.path, dir)
+  t.is(facts.storage.exists, true)
+  t.ok(facts.storage.entries.includes('ui.json'))
+  t.ok(facts.storage.entries.includes('updates.log'))
+
+  fsTest.rmSync(dir, { recursive: true, force: true })
+})
+
+test('uninstall: storage override wins and the dev runtime stays in tmpdir', (t) => {
+  const override = pathTest.join(osTest.tmpdir(), 'jojun-override-only')
+  const overridden = uninstall.discover({ flags: { storage: override }, appName: 'Jojun' })
+  t.is(overridden.storage.path, override)
+
+  const dev = uninstall.discover({ flags: {}, appName: 'Jojun', isDev: true })
+  t.ok(dev.storage.path.startsWith(osTest.tmpdir()), 'dev storage lives under tmpdir')
+  t.absent(dev.storage.path.includes('Application Support'), 'never the persistent location')
+})
+
+test('uninstall: hasFootprint is false when nothing was found', (t) => {
+  t.is(
+    uninstall.hasFootprint({
+      storage: { exists: false, entries: [] },
+      pathEntries: [],
+      binaries: []
+    }),
+    false
+  )
+  t.is(
+    uninstall.hasFootprint({
+      storage: { exists: true, entries: [] },
+      pathEntries: [],
+      binaries: []
+    }),
+    true
+  )
+})
+
+test('uninstall: a binary Jojun did not place needs opt-in', (t) => {
+  const facts = {
+    storage: { path: '/nope', exists: false, entries: [] },
+    pathEntries: [],
+    binaries: [{ path: '/home/me/.local/bin/jojun', provenance: 'unknown', running: false }],
+    pear: { detected: false }
+  }
+
+  const kept = uninstall.plan(facts, {}).targets.find((x) => x.id === 'binary')
+  t.is(kept.action, 'needs-opt-in')
+  t.is(kept.reason, 'not-placed-by-jojun')
+
+  const optedIn = uninstall
+    .plan(facts, { removeBinaries: true })
+    .targets.find((x) => x.id === 'binary')
+  t.is(optedIn.action, 'remove')
+  t.is(optedIn.reason, 'opted-in')
+})
+
+test('uninstall: an absent storage directory is planned as skip', (t) => {
+  const facts = {
+    storage: { path: '/nope', exists: false, entries: [] },
+    pathEntries: [],
+    binaries: [],
+    pear: { detected: false }
+  }
+  const storage = uninstall.plan(facts, {}).targets.find((x) => x.id === 'storage')
+  t.is(storage.action, 'skip')
+  t.is(storage.reason, 'absent')
+})
+
+test('uninstall: dry run reports the plan and deletes nothing', async (t) => {
+  const dir = tmpStorage('dryrun')
+  fsTest.writeFileSync(pathTest.join(dir, 'ui.json'), '{}')
+
+  const { result } = await capture(() =>
+    uninstall.runUninstall({
+      flags: { storage: dir },
+      appName: 'Jojun',
+      isDev: false,
+      dryRun: true,
+      yes: true
+    })
+  )
+
+  t.is(result.changed, false)
+  t.is(result.exitCode, 0)
+  t.ok(fsTest.existsSync(dir), 'dry run left the directory in place')
+
+  fsTest.rmSync(dir, { recursive: true, force: true })
+})
+
+test('uninstall: refuses to remove without confirmation when stdin is not a TTY', async (t) => {
+  const dir = tmpStorage('noconfirm')
+  fsTest.writeFileSync(pathTest.join(dir, 'ui.json'), '{}')
+
+  const { result } = await capture(() =>
+    uninstall.runUninstall({
+      flags: { storage: dir },
+      appName: 'Jojun',
+      isDev: false,
+      yes: false
+    })
+  )
+
+  t.is(result.ok, false)
+  t.is(result.exitCode, 1)
+  t.is(result.changed, false)
+  t.ok(fsTest.existsSync(dir), 'nothing was removed')
+
+  fsTest.rmSync(dir, { recursive: true, force: true })
+})
+
+test('uninstall: confirmed run removes the storage directory', async (t) => {
+  const dir = tmpStorage('confirmed')
+  fsTest.writeFileSync(pathTest.join(dir, 'ui.json'), '{}')
+
+  const { result } = await capture(() =>
+    uninstall.runUninstall({
+      flags: { storage: dir },
+      appName: 'Jojun',
+      isDev: false,
+      yes: true
+    })
+  )
+
+  t.is(result.ok, true)
+  t.is(result.changed, true)
+  t.is(result.exitCode, 0)
+  t.absent(fsTest.existsSync(dir), 'storage directory is gone')
+})
+
+test('uninstall: one failing target does not abandon the others', async (t) => {
+  const dir = tmpStorage('partial')
+  const blocker = tmpStorage('partial-blocker')
+
+  const planned = {
+    targets: [
+      {
+        id: 'storage',
+        kind: 'directory',
+        path: dir,
+        entries: [],
+        action: 'remove',
+        reason: 'created-by-jojun'
+      },
+      // unlinkSync against a directory fails, standing in for a locked file
+      { id: 'binary', kind: 'file', path: blocker, action: 'remove', reason: 'installed-location' }
+    ]
+  }
+
+  const { outcomes, failed } = await uninstall.execute(planned)
+
+  t.is(failed, true)
+  t.is(outcomes.find((x) => x.id === 'storage').outcome, 'removed')
+  t.is(outcomes.find((x) => x.id === 'binary').outcome, 'failed')
+  t.ok(outcomes.find((x) => x.id === 'binary').error, 'failure carries a reason')
+  t.absent(fsTest.existsSync(dir), 'the removable target was still removed')
+
+  fsTest.rmSync(blocker, { recursive: true, force: true })
+})
+
+test('uninstall: the running executable is reported, never silently skipped', (t) => {
+  const facts = {
+    storage: { path: '/nope', exists: false, entries: [] },
+    pathEntries: [],
+    binaries: [{ path: '/somewhere/jojun', provenance: 'jojun-placed', running: true }],
+    pear: { detected: false }
+  }
+
+  const binary = uninstall.plan(facts, {}).targets.find((x) => x.id === 'binary')
+  t.ok(binary, 'still present in the plan')
+  t.is(binary.action, isWindows ? 'manual' : 'remove')
+})
+
+// A real peer message: emitted on the room, so it does not pass through
+// contracts.send() and is therefore genuinely inbound.
+function peerSends(text) {
+  mock.getRoom().emit('message', Buffer.from(text, 'utf8'))
+}
+
+test('history: received messages are kept in arrival order', async (t) => {
+  await swarm._resetForTests()
+  await swarm.join(fixtures.TOPIC_HEX)
+
+  peerSends('one')
+  peerSends('two')
+  peerSends('three')
+
+  const received = swarm.getReceived()
+  t.is(received.length, 3)
+  t.alike(
+    received.map((entry) => entry.bytes.toString('utf8')),
+    ['one', 'two', 'three']
+  )
+  t.is(swarm.getLastReceived().bytes.toString('utf8'), 'three')
+})
+
+test('history: keeps the 50 most recent received and drops the oldest', async (t) => {
+  await swarm._resetForTests()
+  await swarm.join(fixtures.TOPIC_HEX)
+
+  for (let i = 1; i <= 55; i++) peerSends('msg-' + i)
+
+  const received = swarm.getReceived()
+  t.is(received.length, 50)
+  t.is(received[0].bytes.toString('utf8'), 'msg-6', 'oldest five dropped')
+  t.is(received[49].bytes.toString('utf8'), 'msg-55')
+})
+
+test('transports: only the looping-back one is exempt from echo suppression', (t) => {
+  // The mock is the simulated other PC in practice mode, so its echo counts as
+  // received. Hyperswarm never echoes, so a local send there must be filtered.
+  t.is(require('../src/p2p/mock').loopsBack, true)
+  t.is(require('../src/p2p').loopsBack, false)
+})
+
+test('history: every message is direction-tagged', async (t) => {
+  await swarm._resetForTests()
+  await swarm.join(fixtures.TOPIC_HEX)
+
+  swarm.send('mine')
+
+  const history = swarm.getHistory()
+  t.is(history.length, 2, 'sent once, and the simulated peer delivered it back')
+  t.is(history[0].direction, 'out')
+  t.is(history[1].direction, 'in')
+  t.is(history[0].bytes.toString('utf8'), 'mine')
+})
+
+test('practice mode: the simulated peer delivers your own send back', async (t) => {
+  await swarm._resetForTests()
+  await swarm.join(fixtures.TOPIC_HEX)
+
+  swarm.send('hello jojun')
+
+  // What the tutorial relies on: send, then Receive shows something.
+  t.is(swarm.getLastReceived().bytes.toString('utf8'), 'hello jojun')
+  t.is(swarm.getReceived().length, 1)
+})
+
+test('history: a peer message after a local send is also received', async (t) => {
+  await swarm._resetForTests()
+  await swarm.join(fixtures.TOPIC_HEX)
+
+  swarm.send('mine')
+  peerSends('theirs')
+
+  t.alike(
+    swarm.getReceived().map((entry) => entry.bytes.toString('utf8')),
+    ['mine', 'theirs']
+  )
+  t.is(swarm.getLastReceived().bytes.toString('utf8'), 'theirs', 'replay shows the newest')
+})
+
+test('history: onMessage stays the raw transport hook', async (t) => {
+  await swarm._resetForTests()
+  await swarm.join(fixtures.TOPIC_HEX)
+
+  const viaReceived = []
+  const viaMessage = []
+  const unsubA = swarm.onReceived((bytes) => viaReceived.push(bytes.toString('utf8')))
+  const unsubB = swarm.onMessage((bytes) => viaMessage.push(bytes.toString('utf8')))
+
+  swarm.send('mine')
+  peerSends('theirs')
+
+  t.alike(viaMessage, ['mine', 'theirs'], 'unchanged by this feature')
+  t.alike(viaReceived, ['mine', 'theirs'], 'on a looping-back transport nothing is filtered')
+
+  unsubA()
+  unsubB()
+})
+
+test('history: unsubscribing stops delivery', async (t) => {
+  await swarm._resetForTests()
+  await swarm.join(fixtures.TOPIC_HEX)
+
+  const seen = []
+  const unsub = swarm.onReceived((bytes) => seen.push(bytes.toString('utf8')))
+  peerSends('before')
+  unsub()
+  peerSends('after')
+
+  t.alike(seen, ['before'])
+})
+
+test('history: replay with nothing received returns null, not an error', async (t) => {
+  await swarm._resetForTests()
+  await swarm.join(fixtures.TOPIC_HEX)
+
+  t.is(swarm.getLastReceived(), null)
+  t.is(swarm.getReceived().length, 0)
+})
+
+test('history: leaving clears it', async (t) => {
+  await swarm._resetForTests()
+  await swarm.join(fixtures.TOPIC_HEX)
+
+  peerSends('one')
+  t.is(swarm.getReceived().length, 1)
+
+  await swarm.leave()
+  t.is(swarm.getReceived().length, 0)
+  t.is(swarm.getLastReceived(), null)
+})
+
+test('history: getLastBlob and waitForBlob are unchanged', async (t) => {
+  await swarm._resetForTests()
+  await swarm.join(fixtures.TOPIC_HEX)
+
+  t.is(swarm.getLastBlob(), null)
+
+  peerSends('landed')
+  t.is(swarm.getLastBlob().toString('utf8'), 'landed', 'still tracks the newest blob')
+
+  // still short-circuits when a blob is already present
+  const blob = await swarm.waitForBlob(50)
+  t.is(blob.toString('utf8'), 'landed')
+
+  await swarm._resetForTests()
+  await swarm.join(fixtures.TOPIC_HEX)
+  swarm.send('sent-locally')
+  t.is(swarm.getLastBlob().toString('utf8'), 'sent-locally', 'send still sets lastBlob')
+})
+
+test('prefs: autoReceive defaults on and survives an older ui.json', (t) => {
+  const { DEFAULTS, loadPrefs, savePrefs } = require('../src/cli/prefs')
+  t.is(DEFAULTS.autoReceive, true)
+
+  const dir = pathTest.join(osTest.tmpdir(), 'jojun-prefs-' + Date.now())
+  fsTest.mkdirSync(dir, { recursive: true })
+  // an old file written before this key existed
+  fsTest.writeFileSync(pathTest.join(dir, 'ui.json'), JSON.stringify({ lang: 'es' }))
+
+  const loaded = loadPrefs(dir)
+  t.is(loaded.autoReceive, true, 'missing key picks up the default')
+  t.is(loaded.lang, 'es', 'existing keys preserved')
+
+  savePrefs(dir, { ...loaded, autoReceive: false })
+  t.is(loadPrefs(dir).autoReceive, false, 'the choice persists')
+
+  fsTest.rmSync(dir, { recursive: true, force: true })
 })

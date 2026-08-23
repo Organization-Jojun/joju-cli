@@ -82,4 +82,92 @@ function ensureOnPath() {
   return ensureWindowsUserPath(dir)
 }
 
-module.exports = { ensureOnPath, pathHasDir, alreadyOnPath, normalizeDir }
+function readWindowsUserPath(spawnSync) {
+  const script = [
+    `$user = [Environment]::GetEnvironmentVariable('Path', 'User')`,
+    `if ($null -eq $user) { $user = '' }`,
+    `[Console]::Out.Write($user)`
+  ].join('; ')
+
+  const result = spawnSync(
+    'powershell.exe',
+    ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-Command', script],
+    { windowsHide: true }
+  )
+
+  if (result.status !== 0) return null
+  return result.stdout ? result.stdout.toString() : ''
+}
+
+function writeWindowsUserPath(spawnSync, value) {
+  const script = [
+    `[Environment]::SetEnvironmentVariable('Path', ${psQuote(value)}, 'User')`,
+    `Write-Output 'WRITTEN'`
+  ].join('; ')
+
+  return spawnSync(
+    'powershell.exe',
+    ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-Command', script],
+    { windowsHide: true }
+  )
+}
+
+/**
+ * Pure counterpart to the append in ensureWindowsUserPath: drop every entry that
+ * names `dir`, keep everything else byte-identical and in order. Returns the
+ * input untouched when nothing matches, so a no-op never rewrites the user PATH.
+ */
+function removeFromPathValue(pathValue, dir) {
+  const value = pathValue === null || pathValue === undefined ? '' : String(pathValue)
+  const target = normalizeDir(dir)
+  if (!target) return { value, removed: false }
+
+  const separator = isWindows ? ';' : ':'
+  const parts = value.split(separator)
+  const kept = parts.filter((part) => normalizeDir(part) !== target)
+
+  if (kept.length === parts.length) return { value, removed: false }
+  return { value: kept.join(separator), removed: true }
+}
+
+/**
+ * Remove Jojun's own entry from the user PATH (Windows).
+ * Reads the stored value, applies removeFromPathValue, writes it back through
+ * SetEnvironmentVariable. Never uses setx (it truncates PATH).
+ */
+function removeWindowsUserPath(dir) {
+  if (os.platform() !== 'win32') return { removed: false, reason: 'not-windows' }
+
+  let spawnSync
+  try {
+    spawnSync = require('bare-subprocess').spawnSync
+  } catch {
+    return { removed: false, reason: 'no-spawn' }
+  }
+
+  const current = readWindowsUserPath(spawnSync)
+  if (current === null) return { removed: false, reason: 'powershell' }
+
+  const next = removeFromPathValue(current, dir)
+  if (!next.removed) return { removed: false, reason: 'not-present' }
+
+  const result = writeWindowsUserPath(spawnSync, next.value)
+  if (result.status !== 0) {
+    return {
+      removed: false,
+      reason: 'powershell',
+      detail: result.stderr && result.stderr.toString()
+    }
+  }
+
+  return { removed: true }
+}
+
+module.exports = {
+  ensureOnPath,
+  pathHasDir,
+  alreadyOnPath,
+  normalizeDir,
+  removeFromPathValue,
+  removeWindowsUserPath
+}
