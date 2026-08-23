@@ -53,6 +53,8 @@ module.exports = {
   helpFlow2: '2. Receiver: Receive (r) — waits for the message',
   helpFlow3: '3. Sender: Send message (e)',
   helpFlow4: '4. Receiver sees the same text. No Discord, USB, or server.',
+  helpAgent:
+    'Friend install: paste docs/AGENT-PROMPT.md from the GitHub repo into their coding agent.',
   helpSlash: 'Slash commands:',
   keysTitle: 'Shortcuts (not secret)',
   keysBody: [

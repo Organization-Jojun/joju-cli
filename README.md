@@ -31,6 +31,10 @@ You should see the pixel **pigeon + JOJUN** splash, then a setup question, then 
 
 OTA errors go to `<storage>/updates.log`, not the terminal.
 
+### Install via your coding agent
+
+Send someone [docs/AGENT-PROMPT.md](docs/AGENT-PROMPT.md) (or paste the fenced prompt in that file into Cursor / Claude). The agent installs Pear, puts `jojun` on the machine, and tells them Connect / Send / Receive. Agree a **room name** first (same spelling on both PCs). On **Windows**, `pear install` is enough while this link is seeded. On **Mac/Linux**, the agent builds the native binary from `main` (the seeded release is Windows x64).
+
 ---
 
 ## Use it (interactive)
@@ -188,6 +192,7 @@ src/contracts/          CLI ↔ P2P (setUseMock)
 src/p2p/                Hyperswarm + mock
 src/deploy/             pear stage/seed wrappers
 docs/banner-cli/        source design (ansi / txt / go)
+docs/AGENT-PROMPT.md    paste into a coding agent to install Jojun
 ```
 
-[`PROYECTO.md`](PROYECTO.md) · [`docs/PLAN.md`](docs/PLAN.md)
+Install-via-agent prompt: [`docs/AGENT-PROMPT.md`](docs/AGENT-PROMPT.md)

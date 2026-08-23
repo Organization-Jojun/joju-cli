@@ -53,6 +53,8 @@ module.exports = {
   helpFlow2: '2. Quien recibe: Recibir (r) — espera el mensaje',
   helpFlow3: '3. Quien envía: Enviar mensaje (e)',
   helpFlow4: '4. Quien recibe ve el mismo texto. Sin Discord, USB ni servidor.',
+  helpAgent:
+    'Para instalarlo en otra PC: pega docs/AGENT-PROMPT.md del repo de GitHub en su agente.',
   helpSlash: 'Comandos con /:',
   keysTitle: 'Atajos (no son secretos)',
   keysBody: [

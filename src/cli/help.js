@@ -16,6 +16,7 @@ function helpPanel() {
     t('helpFlow2'),
     t('helpFlow3'),
     t('helpFlow4'),
+    t('helpAgent'),
     '',
     t('emptyRoom'),
     '',
