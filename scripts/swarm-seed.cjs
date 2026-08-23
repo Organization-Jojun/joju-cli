@@ -76,31 +76,41 @@ async function main() {
     '/by-arch/darwin-arm64/app/jojun'
   ]
 
+  let haveBlobs = false
+  let prefetching = false
+
   async function prefetch() {
-    for (const p of needed) {
-      const t0 = Date.now()
-      try {
-        const buf = await Promise.race([
-          drive.get(p),
-          new Promise((_, reject) =>
-            setTimeout(() => reject(new Error('prefetch-timeout')), 120000)
-          )
-        ])
-        console.log(
-          JSON.stringify({
-            event: 'prefetch',
-            path: p,
-            bytes: buf ? buf.byteLength : 0,
-            ms: Date.now() - t0
-          })
-        )
-      } catch (err) {
-        console.log(JSON.stringify({ event: 'prefetch-error', path: p, err: String(err) }))
+    if (haveBlobs || prefetching) return
+    prefetching = true
+    let ok = true
+    try {
+      for (const p of needed) {
+        const t0 = Date.now()
+        try {
+          const buf = await Promise.race([
+            drive.get(p),
+            new Promise((_, reject) =>
+              setTimeout(() => reject(new Error('prefetch-timeout')), 120000)
+            )
+          ])
+          const bytes = buf ? buf.byteLength : 0
+          if (!bytes) ok = false
+          console.log(JSON.stringify({ event: 'prefetch', path: p, bytes, ms: Date.now() - t0 }))
+        } catch (err) {
+          ok = false
+          console.log(JSON.stringify({ event: 'prefetch-error', path: p, err: String(err) }))
+        }
       }
+      if (ok) {
+        haveBlobs = true
+        console.log(JSON.stringify({ event: 'prefetch-ready', length: drive.core.length }))
+      }
+    } finally {
+      prefetching = false
     }
   }
 
-  swarm.once('connection', () => {
+  swarm.on('connection', () => {
     prefetch().catch((err) => console.error(err))
   })
 
@@ -110,6 +120,7 @@ async function main() {
       .update({ wait: true })
       .then(() => {
         if (drive.core.length !== prev) {
+          haveBlobs = false
           console.log(JSON.stringify({ event: 'updated', length: drive.core.length }))
           prefetch().catch((err) => console.error(err))
         }
