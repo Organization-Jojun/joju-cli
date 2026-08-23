@@ -500,13 +500,15 @@ async function dispatchIdle(token) {
 async function loopLineMode(version) {
   while (true) {
     write(t('prompt'))
+    // Deliberately NOT counted as a guarded read: this is the idle prompt, and
+    // queueing here would hold a message back until the user pressed Enter,
+    // which is the whole feature. Interleaving with a half-typed line is the
+    // accepted trade-off on terminals without raw mode (see design.md).
     atPrompt = true
-    canonicalReads++
     let line
     try {
       line = await readLine()
     } finally {
-      canonicalReads--
       atPrompt = false
     }
     flushIncoming()
