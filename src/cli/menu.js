@@ -29,6 +29,7 @@ function printStaticHelp() {
   console.log('  jojun join <topic>')
   console.log('  echo hola | jojun paste')
   console.log('  jojun yank')
+  console.log('  jojun uninstall --dry-run')
   console.log('')
 }
 

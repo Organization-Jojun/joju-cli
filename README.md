@@ -74,8 +74,23 @@ Each of these does work and **exits** (Pear `variant/daemon` shape):
 | `jojun leave` | Leave and clear local session |
 | `jojun keys` | Print: join paste yank wait leave |
 | `jojun --menu` | Numbered 1–5 menu, then exit |
+| `jojun uninstall` | Remove Jojun from this machine (asks first) |
 
 Flags: `--no-updates` · `--storage <dir>` · `--json` · `--timeout` / `-t` · `--help` · `--version`.
+Root flags go **before** the subcommand: `jojun --json uninstall`.
+
+### Removing Jojun
+
+Always look before you delete:
+
+```bash
+jojun uninstall --dry-run   # report the plan, delete nothing
+jojun uninstall             # same report, then asks y/N
+```
+
+It removes the storage directory (`session.json`, `last.blob`, `ui.json`, `updates.log`) and, on Windows, the user PATH entry Jojun added — every other PATH entry is preserved. A `jojun` binary Jojun did not place (the copy `docs/AGENT-PROMPT.md` suggests putting on your PATH by hand) is **reported but kept**; add `--binaries` to remove those too. `--yes` skips the prompt for scripts.
+
+It never touches the Pear runtime or Pear's own app entry. On Windows a running `jojun.exe` cannot delete itself, so it is reported for manual removal after everything else is gone.
 
 Test room hex (same as Enter in the UI):
 

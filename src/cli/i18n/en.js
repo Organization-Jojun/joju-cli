@@ -46,7 +46,7 @@ module.exports = {
   settingsWaitPrompt: 'Wait seconds: ',
   advancedTitle: 'Advanced (scripts / topic hex)',
   advancedBody:
-    'One-shot: jojun join <topic>  ·  echo hi | jojun paste  ·  jojun yank\nExpert slash: /join /paste /yank /leave  ·  keys j p y l',
+    'One-shot: jojun join <topic>  ·  echo hi | jojun paste  ·  jojun yank\nRemove Jojun: jojun uninstall --dry-run, then jojun uninstall\nExpert slash: /join /paste /yank /leave  ·  keys j p y l',
   helpIntro: 'Jojun is a room clipboard (not an AI chat).',
   helpFlowTitle: 'Two PCs, same room name:',
   helpFlow1: '1. Both: Connect (c)',
@@ -84,7 +84,8 @@ module.exports = {
   tut4sent: 'Sent. Next we Receive — you should see the same text below.',
   tut5two:
     'Step 5/6 — On the OTHER computer: open Jojun, Connect to THE SAME room, Receive, then Send here.',
-  tut5one: 'Step 5/6 — Practice mode: the other “PC” is simulated here. You already sent and received.',
+  tut5one:
+    'Step 5/6 — Practice mode: the other “PC” is simulated here. You already sent and received.',
   tut6: 'Step 6/6 — You can use the menu. ? opens help. /settings changes room, network, wait time, language.',
   tutContinue: 'Enter to continue…',
   errNotJoined: 'Connect to a room first (c or /connect). Enter = test room.',
@@ -105,5 +106,31 @@ module.exports = {
   slash_language: 'Switch language (en / es)',
   slash_topic: 'Advanced: show topic hex',
   slash_clear: 'Clear screen',
-  slash_advanced: 'Show script commands and hex'
+  slash_advanced: 'Show script commands and hex',
+  uninstallHeader: 'Jojun found this on this machine:',
+  uninstallStorage: 'storage',
+  uninstallPathEntry: 'PATH entry',
+  uninstallBinary: 'binary',
+  uninstallPearNotice:
+    'Pear installed this app. This command does not remove Pear or its app entry.',
+  uninstallMarkRemove: 'remove  ',
+  uninstallMarkOptIn: 'keep    ',
+  uninstallMarkManual: 'manual  ',
+  uninstallMarkNotice: 'note    ',
+  uninstallOptInHint:
+    'Jojun did not place the files marked "keep". Add --binaries to remove them too.',
+  uninstallManualHint:
+    'A running program cannot delete itself. Delete the file marked "manual" by hand.',
+  uninstallConfirm: 'Remove these? (y/N): ',
+  uninstallNeedsYes: 'Refusing to remove anything without confirmation. Re-run with --yes.',
+  uninstallAborted: 'Nothing was removed.',
+  uninstallDryRun: 'Dry run — nothing was removed.',
+  uninstallNothing: 'Jojun is not installed on this machine.',
+  uninstallNothingToRemove: 'Nothing here can be removed automatically.',
+  uninstallOutcomeRemoved: 'removed ',
+  uninstallOutcomeSkipped: 'skipped ',
+  uninstallOutcomeFailed: 'FAILED  ',
+  uninstallOutcomeManual: 'manual  ',
+  uninstallOutcomeNotice: 'note    ',
+  uninstallOutcomeOptIn: 'kept    '
 }

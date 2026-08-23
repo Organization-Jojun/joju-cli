@@ -197,7 +197,9 @@ test('slash: unknown and prefix suggest', (t) => {
 
 test('human-error: English default; Spanish Colombian optional', (t) => {
   setLang('en')
-  t.ok(/Connect to a room first/.test(humanError(new Error('not joined to a topic; run join first'))))
+  t.ok(
+    /Connect to a room first/.test(humanError(new Error('not joined to a topic; run join first')))
+  )
   t.ok(/Nobody in the room/.test(humanError(new Error('timed out waiting for peer after 30000ms'))))
   setLang('es')
   t.ok(/conéctate|conectate/i.test(humanError(new Error('not joined to a topic'))))
@@ -234,7 +236,281 @@ test('contracts: setUseMock is a real switch (stays mock in unit tests)', async 
 const { pathHasDir } = require('../src/core/path-install')
 
 test('path-install: pathHasDir matches Windows dirs', (t) => {
-  t.ok(pathHasDir('C:\\foo;C:\\Users\\me\\AppData\\Local\\Programs\\Jojun', 'C:\\Users\\me\\AppData\\Local\\Programs\\Jojun'))
-  t.ok(pathHasDir('C:\\foo;C:\\Users\\me\\AppData\\Local\\Programs\\Jojun\\', 'C:\\Users\\me\\AppData\\Local\\Programs\\Jojun'))
+  t.ok(
+    pathHasDir(
+      'C:\\foo;C:\\Users\\me\\AppData\\Local\\Programs\\Jojun',
+      'C:\\Users\\me\\AppData\\Local\\Programs\\Jojun'
+    )
+  )
+  t.ok(
+    pathHasDir(
+      'C:\\foo;C:\\Users\\me\\AppData\\Local\\Programs\\Jojun\\',
+      'C:\\Users\\me\\AppData\\Local\\Programs\\Jojun'
+    )
+  )
   t.ok(!pathHasDir('C:\\foo;C:\\bar', 'C:\\Users\\me\\AppData\\Local\\Programs\\Jojun'))
+})
+
+const fsTest = require('bare-fs')
+const osTest = require('bare-os')
+const pathTest = require('bare-path')
+const { isWindows } = require('which-runtime')
+const { removeFromPathValue } = require('../src/core/path-install')
+const uninstall = require('../src/commands/uninstall')
+
+const SEP = isWindows ? ';' : ':'
+const TARGET = isWindows ? 'C:\\Programs\\Jojun' : '/opt/jojun'
+const OTHER_A = isWindows ? 'C:\\foo' : '/usr/bin'
+const OTHER_B = isWindows ? 'C:\\bar' : '/usr/local/bin'
+
+function tmpStorage(name) {
+  const dir = pathTest.join(osTest.tmpdir(), 'jojun-test-' + name + '-' + Date.now())
+  fsTest.mkdirSync(dir, { recursive: true })
+  return dir
+}
+
+function capture(fn) {
+  const original = console.log
+  const lines = []
+  console.log = (...args) => lines.push(args.join(' '))
+  const restore = () => {
+    console.log = original
+  }
+  return Promise.resolve()
+    .then(fn)
+    .then(
+      (result) => {
+        restore()
+        return { result, lines }
+      },
+      (err) => {
+        restore()
+        throw err
+      }
+    )
+}
+
+test('path-install: removeFromPathValue drops the entry and keeps the rest in order', (t) => {
+  const value = [OTHER_A, TARGET, OTHER_B].join(SEP)
+  const out = removeFromPathValue(value, TARGET)
+
+  t.is(out.removed, true)
+  t.is(out.value, [OTHER_A, OTHER_B].join(SEP))
+  t.is(out.value.split(SEP)[0], OTHER_A, 'order preserved')
+  t.is(out.value.split(SEP)[1], OTHER_B, 'order preserved')
+})
+
+test('path-install: removeFromPathValue removes every duplicate', (t) => {
+  const value = [OTHER_A, TARGET, OTHER_B, TARGET].join(SEP)
+  const out = removeFromPathValue(value, TARGET)
+
+  t.is(out.removed, true)
+  t.is(out.value, [OTHER_A, OTHER_B].join(SEP))
+})
+
+test('path-install: removeFromPathValue ignores trailing separator and case', (t) => {
+  const sep = isWindows ? '\\' : '/'
+  const stored = TARGET + sep
+  t.is(removeFromPathValue([OTHER_A, stored].join(SEP), TARGET).removed, true)
+  t.is(removeFromPathValue([OTHER_A, TARGET.toUpperCase()].join(SEP), TARGET).removed, true)
+})
+
+test('path-install: removeFromPathValue leaves a non-matching value untouched', (t) => {
+  const value = [OTHER_A, OTHER_B].join(SEP)
+  const out = removeFromPathValue(value, TARGET)
+
+  t.is(out.removed, false)
+  t.is(out.value, value, 'returned byte-for-byte')
+})
+
+test('path-install: removeFromPathValue handles empty and single-entry values', (t) => {
+  const empty = removeFromPathValue('', TARGET)
+  t.is(empty.removed, false)
+  t.is(empty.value, '')
+
+  const single = removeFromPathValue(TARGET, TARGET)
+  t.is(single.removed, true)
+  t.is(single.value, '')
+
+  const noDir = removeFromPathValue([OTHER_A].join(SEP), '')
+  t.is(noDir.removed, false)
+})
+
+test('uninstall: discover reports the storage directory and its contents', (t) => {
+  const dir = tmpStorage('discover')
+  fsTest.writeFileSync(pathTest.join(dir, 'ui.json'), '{}')
+  fsTest.writeFileSync(pathTest.join(dir, 'updates.log'), 'x')
+
+  const facts = uninstall.discover({ flags: { storage: dir }, appName: 'Jojun', isDev: false })
+
+  t.is(facts.storage.path, dir)
+  t.is(facts.storage.exists, true)
+  t.ok(facts.storage.entries.includes('ui.json'))
+  t.ok(facts.storage.entries.includes('updates.log'))
+
+  fsTest.rmSync(dir, { recursive: true, force: true })
+})
+
+test('uninstall: storage override wins and the dev runtime stays in tmpdir', (t) => {
+  const override = pathTest.join(osTest.tmpdir(), 'jojun-override-only')
+  const overridden = uninstall.discover({ flags: { storage: override }, appName: 'Jojun' })
+  t.is(overridden.storage.path, override)
+
+  const dev = uninstall.discover({ flags: {}, appName: 'Jojun', isDev: true })
+  t.ok(dev.storage.path.startsWith(osTest.tmpdir()), 'dev storage lives under tmpdir')
+  t.absent(dev.storage.path.includes('Application Support'), 'never the persistent location')
+})
+
+test('uninstall: hasFootprint is false when nothing was found', (t) => {
+  t.is(
+    uninstall.hasFootprint({
+      storage: { exists: false, entries: [] },
+      pathEntries: [],
+      binaries: []
+    }),
+    false
+  )
+  t.is(
+    uninstall.hasFootprint({
+      storage: { exists: true, entries: [] },
+      pathEntries: [],
+      binaries: []
+    }),
+    true
+  )
+})
+
+test('uninstall: a binary Jojun did not place needs opt-in', (t) => {
+  const facts = {
+    storage: { path: '/nope', exists: false, entries: [] },
+    pathEntries: [],
+    binaries: [{ path: '/home/me/.local/bin/jojun', provenance: 'unknown', running: false }],
+    pear: { detected: false }
+  }
+
+  const kept = uninstall.plan(facts, {}).targets.find((x) => x.id === 'binary')
+  t.is(kept.action, 'needs-opt-in')
+  t.is(kept.reason, 'not-placed-by-jojun')
+
+  const optedIn = uninstall
+    .plan(facts, { removeBinaries: true })
+    .targets.find((x) => x.id === 'binary')
+  t.is(optedIn.action, 'remove')
+  t.is(optedIn.reason, 'opted-in')
+})
+
+test('uninstall: an absent storage directory is planned as skip', (t) => {
+  const facts = {
+    storage: { path: '/nope', exists: false, entries: [] },
+    pathEntries: [],
+    binaries: [],
+    pear: { detected: false }
+  }
+  const storage = uninstall.plan(facts, {}).targets.find((x) => x.id === 'storage')
+  t.is(storage.action, 'skip')
+  t.is(storage.reason, 'absent')
+})
+
+test('uninstall: dry run reports the plan and deletes nothing', async (t) => {
+  const dir = tmpStorage('dryrun')
+  fsTest.writeFileSync(pathTest.join(dir, 'ui.json'), '{}')
+
+  const { result } = await capture(() =>
+    uninstall.runUninstall({
+      flags: { storage: dir },
+      appName: 'Jojun',
+      isDev: false,
+      dryRun: true,
+      yes: true
+    })
+  )
+
+  t.is(result.changed, false)
+  t.is(result.exitCode, 0)
+  t.ok(fsTest.existsSync(dir), 'dry run left the directory in place')
+
+  fsTest.rmSync(dir, { recursive: true, force: true })
+})
+
+test('uninstall: refuses to remove without confirmation when stdin is not a TTY', async (t) => {
+  const dir = tmpStorage('noconfirm')
+  fsTest.writeFileSync(pathTest.join(dir, 'ui.json'), '{}')
+
+  const { result } = await capture(() =>
+    uninstall.runUninstall({
+      flags: { storage: dir },
+      appName: 'Jojun',
+      isDev: false,
+      yes: false
+    })
+  )
+
+  t.is(result.ok, false)
+  t.is(result.exitCode, 1)
+  t.is(result.changed, false)
+  t.ok(fsTest.existsSync(dir), 'nothing was removed')
+
+  fsTest.rmSync(dir, { recursive: true, force: true })
+})
+
+test('uninstall: confirmed run removes the storage directory', async (t) => {
+  const dir = tmpStorage('confirmed')
+  fsTest.writeFileSync(pathTest.join(dir, 'ui.json'), '{}')
+
+  const { result } = await capture(() =>
+    uninstall.runUninstall({
+      flags: { storage: dir },
+      appName: 'Jojun',
+      isDev: false,
+      yes: true
+    })
+  )
+
+  t.is(result.ok, true)
+  t.is(result.changed, true)
+  t.is(result.exitCode, 0)
+  t.absent(fsTest.existsSync(dir), 'storage directory is gone')
+})
+
+test('uninstall: one failing target does not abandon the others', async (t) => {
+  const dir = tmpStorage('partial')
+  const blocker = tmpStorage('partial-blocker')
+
+  const planned = {
+    targets: [
+      {
+        id: 'storage',
+        kind: 'directory',
+        path: dir,
+        entries: [],
+        action: 'remove',
+        reason: 'created-by-jojun'
+      },
+      // unlinkSync against a directory fails, standing in for a locked file
+      { id: 'binary', kind: 'file', path: blocker, action: 'remove', reason: 'installed-location' }
+    ]
+  }
+
+  const { outcomes, failed } = await uninstall.execute(planned)
+
+  t.is(failed, true)
+  t.is(outcomes.find((x) => x.id === 'storage').outcome, 'removed')
+  t.is(outcomes.find((x) => x.id === 'binary').outcome, 'failed')
+  t.ok(outcomes.find((x) => x.id === 'binary').error, 'failure carries a reason')
+  t.absent(fsTest.existsSync(dir), 'the removable target was still removed')
+
+  fsTest.rmSync(blocker, { recursive: true, force: true })
+})
+
+test('uninstall: the running executable is reported, never silently skipped', (t) => {
+  const facts = {
+    storage: { path: '/nope', exists: false, entries: [] },
+    pathEntries: [],
+    binaries: [{ path: '/somewhere/jojun', provenance: 'jojun-placed', running: true }],
+    pear: { detected: false }
+  }
+
+  const binary = uninstall.plan(facts, {}).targets.find((x) => x.id === 'binary')
+  t.ok(binary, 'still present in the plan')
+  t.is(binary.action, isWindows ? 'manual' : 'remove')
 })

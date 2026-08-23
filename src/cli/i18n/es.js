@@ -46,7 +46,7 @@ module.exports = {
   settingsWaitPrompt: 'Segundos de espera: ',
   advancedTitle: 'Avanzado (scripts / topic hex)',
   advancedBody:
-    'One-shot: jojun join <topic>  ·  echo hola | jojun paste  ·  jojun yank\nSlash experto: /join /paste /yank /leave  ·  teclas j p y l',
+    'One-shot: jojun join <topic>  ·  echo hola | jojun paste  ·  jojun yank\nDesinstalar: jojun uninstall --dry-run y después jojun uninstall\nSlash experto: /join /paste /yank /leave  ·  teclas j p y l',
   helpIntro: 'Jojun es un portapapeles de sala (no es un chat con inteligencia artificial).',
   helpFlowTitle: 'Dos PCs, el mismo nombre de sala:',
   helpFlow1: '1. Las dos: Conectar (c)',
@@ -105,5 +105,30 @@ module.exports = {
   slash_language: 'Cambiar idioma (en / es)',
   slash_topic: 'Avanzado: mostrar topic hex',
   slash_clear: 'Limpiar pantalla',
-  slash_advanced: 'Ver comandos de script y hex'
+  slash_advanced: 'Ver comandos de script y hex',
+  uninstallHeader: 'Jojun encontró esto en este PC:',
+  uninstallStorage: 'datos',
+  uninstallPathEntry: 'entrada del PATH',
+  uninstallBinary: 'binario',
+  uninstallPearNotice: 'Pear instaló esta app. Este comando no borra Pear ni su registro de apps.',
+  uninstallMarkRemove: 'borrar  ',
+  uninstallMarkOptIn: 'dejar   ',
+  uninstallMarkManual: 'manual  ',
+  uninstallMarkNotice: 'nota    ',
+  uninstallOptInHint:
+    'Jojun no puso los archivos marcados como "dejar". Agrega --binaries si también los quieres borrar.',
+  uninstallManualHint:
+    'Un programa que está corriendo no se puede borrar solo. Borra a mano el archivo marcado como "manual".',
+  uninstallConfirm: '¿Borro esto? (y/N): ',
+  uninstallNeedsYes: 'No borro nada sin que confirmes. Vuelve a correrlo con --yes.',
+  uninstallAborted: 'No se borró nada.',
+  uninstallDryRun: 'Solo prueba — no se borró nada.',
+  uninstallNothing: 'Jojun no está instalado en este PC.',
+  uninstallNothingToRemove: 'Aquí no hay nada que se pueda borrar automáticamente.',
+  uninstallOutcomeRemoved: 'borrado ',
+  uninstallOutcomeSkipped: 'omitido ',
+  uninstallOutcomeFailed: 'FALLÓ   ',
+  uninstallOutcomeManual: 'manual  ',
+  uninstallOutcomeNotice: 'nota    ',
+  uninstallOutcomeOptIn: 'quedó   '
 }

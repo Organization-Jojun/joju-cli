@@ -1,7 +1,7 @@
 import { flag } from 'paparam'
 import path from 'bare-path'
 import pkg from './package.json'
-import { createCommands, createRootCommand, ACTIONS } from './src/cli/index.js'
+import { createCommands, createRootCommand, ONE_SHOT } from './src/cli/index.js'
 import { runMenu, printStaticHelp } from './src/cli/menu.js'
 import { runSession } from './src/cli/session.js'
 import { isInteractive } from './src/core/readline.js'
@@ -18,7 +18,7 @@ function getFlags(cmd) {
   return { ...rootCmd.flags, ...cmd.flags }
 }
 
-const { joinCmd, pasteCmd, yankCmd, waitCmd, leaveCmd, keysCmd, uiCmd, tuiCmd } =
+const { joinCmd, pasteCmd, yankCmd, waitCmd, leaveCmd, keysCmd, uninstallCmd, uiCmd, tuiCmd } =
   createCommands({
     appName,
     isDev,
@@ -45,6 +45,7 @@ rootCmd = createRootCommand({
     waitCmd,
     leaveCmd,
     keysCmd,
+    uninstallCmd,
     uiCmd,
     tuiCmd
   }
@@ -83,7 +84,7 @@ if (argv.includes('--updater')) {
   Bare.exit()
 }
 
-const subcommand = argv.find((arg) => ACTIONS.includes(arg) || arg === 'keys')
+const subcommand = argv.find((arg) => ONE_SHOT.includes(arg))
 
 if (subcommand) {
   const result = rootCmd.parse(argv)
