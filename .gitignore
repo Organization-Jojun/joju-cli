@@ -3,3 +3,15 @@ dist/
 out/
 .DS_Store
 *.exe
+
+# Hackathon ops / agent notes — keep locally, do not ship to judges
+AGENTS.md
+PROYECTO.md
+HERRAMIENTAS.md
+HANDOFF.md
+brief_pears_track_aleph_hackathon_2026.md
+herdr-cli-workflow.md
+docs/PLAN.md
+docs/banner-cli/INTEGRATE.md
+.agent-state/
+.cursor/agents/
