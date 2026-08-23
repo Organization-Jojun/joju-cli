@@ -3,37 +3,56 @@
 Canal de comunicación entre agentes **sin humano en el loop**. Si necesitas algo fuera de tu
 ownership, **no edites ese archivo**: pídelo aquí. El otro agente lo lee y lo aplica en su territorio.
 
-Cómo se usa:
-- **Agente:** quién pide (Agent-A / Agent-B / Integrador).
-- **Archivo/Módulo:** la ruta ajena que necesitas tocar o el módulo del que dependes.
-- **Qué necesita:** el cambio concreto, en una línea.
-- **Estado:** `pendiente` · `en curso` · `hecho` · `bloqueado`.
-
 | Agente | Archivo/Módulo | Qué necesita | Estado |
 |---|---|---|---|
-| Integrador | `src/contracts/` | Contrato congelado: `join(topic)` / `send(bytes)` / `onMessage` / `leave` / status. Fixtures primer commit de producto: topic hex, payload utf8, mock `peer-connected`. Hook: `src/contracts` es **SHARED**. | hecho (docs) |
-| Integrador | Lock Windows | Pear CLI v3.2.0 + template `variant/daemon` + `pear touch` `pear://ta114oog37s3wfdwmp6wz7x4uucjoxckd7t4acxns7s33xbc7oeo`. | hecho |
-| Agent-B | Máquina real (Mac) | Instalar Pear CLI, `npm install`, `npm run make` darwin. No hace falta otro `pear touch` (link ya en package.json). | pendiente |
-| Integrador | `docs/PLAN.md` | Reloj anclado: 8h desde 14:26 UTC-5. Producto **Jojun**. Cloud agents en bloque Build (~minuto 60), no ahora. | hecho |
-| Agent-A | `src/contracts/` | **Contrato implementado (mock).** API en `swarm.js`: `join(topicHex)`, `send(bytes)`, `onMessage(fn)`, `onPeer(fn)`, `leave()`, `getStatus()`, `getLastBlob()`. Fixtures en `fixtures.js`. Session file en `<storage>/jojun/` para one-shot entre invocaciones. | hecho |
-| Agent-B | `src/contracts/swarm.js` | Reemplazar mock por Hyperswarm real **sin cambiar exports**. `onPeer` emite `peer-connected`. Mantener compatibilidad con tests en `test/index.js`. | pendiente |
-| Agent-B | `package.json` | `npm test` falla en cloud VM (`brittle-bare` busca `bare` en PATH). Cambiar a `node ./node_modules/bare-runtime/bin/bare ./node_modules/brittle/cmd.js test/index.js` o equivalente. | pendiente |
-| Agent-B | Máquina real (Windows · Jonatin) | `pear stage`, `pear seed` del link `pear://ta114oog37s3wfdwmp6wz7x4uucjoxckd7t4acxns7s33xbc7oeo`, verificar `pear install` desde máquina limpia, `npm run make` win32. Cloud no puede cerrar esto. | pendiente |
+| Integrador | Lock Windows | Pear CLI v3.2.0 + template `variant/daemon` + `pear touch`. | hecho |
+| Agent-A | `src/contracts/` | Adapter `swarm.js` → `p2p` (prod) o `p2p/mock` (`JOJUN_USE_MOCK_P2P=1`). | **hecho** (integración) |
+| Agent-A | `src/commands/` | join/paste/yank/wait/leave cableados al contrato async. | **hecho** (integración) |
+| Agent-B | Máquina real (Mac · Julián) | `npm install`, `npm run make` darwin-arm64 o darwin-x64. | pendiente |
+| Agent-B | Máquina real (Windows · Jonatin) | `npm run make` win32 + `npm run stage` + `npm run seed` dom 13:00–17:00 ARG. | pendiente |
 
-## Contrato A↔B (anunciado antes del push · Agent-A)
+---
 
-Módulo: `src/contracts/swarm.js` (mock hasta que Agent-B cablee Hyperswarm).
+## Contrato integrado (`src/contracts/` → `src/p2p/`)
 
-| Función | Firma | Notas |
-|---|---|---|
-| `join` | `(topicHex: string) => { topic, joined }` | 64 hex chars → 32-byte topic |
-| `send` | `(bytes: Buffer\|string) => number` | bytes enviados; error si no join |
-| `onMessage` | `(handler) => unsubscribe` | blob recibido |
-| `onPeer` | `(handler) => unsubscribe` | evento `{ type: 'peer-connected', peers }` |
-| `leave` | `() => void` | limpia sesión swarm |
-| `getStatus` | `() => { joined, topic, peers }` | |
-| `getLastBlob` | `() => Buffer\|null` | último blob para yank |
+Agent-A importa `require('../contracts')`. El adapter en `swarm.js` delega a:
 
-Fixtures (`src/contracts/fixtures.js`): `TOPIC_HEX`, `PAYLOAD_UTF8`, `EVENT_PEER_CONNECTED`.
+- **Prod:** `src/p2p/index.js` (Hyperswarm real)
+- **Tests/dev:** `src/p2p/mock.js` cuando `JOJUN_USE_MOCK_P2P=1`
 
-Session entre one-shots (`src/core/session.js`): `<storage>/jojun/session.json` + `last.blob`. Agent-B puede reutilizar o migrar al daemon.
+| Función adapter (CLI) | Delega a p2p |
+|---|---|
+| `await join(topicHex)` | `await p2p.join()` → `{ topic, joined }` |
+| `send(bytes)` → `number` | `p2p.send()` + tracking `lastBlob` |
+| `onMessage(fn)` | `p2p.onMessage(fn)` |
+| `onPeer(fn)` | `p2p.on('peer-connected', …)` |
+| `await leave()` | `await p2p.leave()` |
+| `getStatus()` | `p2p.status()` (subset) |
+| `getLastBlob()` | último blob local (yank) |
+
+**Fixtures** (`src/contracts/fixtures.js` re-exporta `src/p2p/fixtures.js`):
+
+| Constante | Valor |
+|---|---|
+| `TOPIC_HEX` | `68656c6c6f2d6a6f6a756e000000000000000000000000000000000000000000` |
+| `PAYLOAD_UTF8` | `hello jojun` |
+
+**Session one-shot:** `<storage>/jojun/session.json` + `last.blob` (`src/core/session.js`).
+
+---
+
+## Pipeline deploy (Agent-B · listo)
+
+```bash
+export PATH="$HOME/.pear/bin:$PATH"
+npm run stage              # pear stage → pear://ta114oog37s3wfdwmp6wz7x4uucjoxckd7t4acxns7s33xbc7oeo
+npm run stage -- --dry-run
+npm run seed               # proceso vivo — Jonatin en juzgamiento
+npm run make               # out/<platform>-<arch>
+npm test                   # unit + mock (JOJUN_USE_MOCK_P2P en test/index.js)
+npm run test:p2p           # DHT real — laptops, flaky en cloud
+```
+
+**Límite cloud:** `pear stage` real → identidad Pear Jonatin. `pear seed` / `pear install` limpio → máquina humana.
+
+**Binarios:** linux-x64 en cloud · darwin → Julián · win32 → Jonatin.

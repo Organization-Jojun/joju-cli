@@ -27,7 +27,7 @@ function createCommands({ appName, isDev, getFlags, onBeforeAction }) {
     async () => {
       await onBeforeAction(joinCmd)
       prepareSession(joinCmd)
-      runJoin(joinCmd.args.topic)
+      await runJoin(joinCmd.args.topic)
       Bare.exit(0)
     }
   )
@@ -78,7 +78,7 @@ function createCommands({ appName, isDev, getFlags, onBeforeAction }) {
     async () => {
       await onBeforeAction(leaveCmd)
       prepareSession(leaveCmd)
-      runLeave()
+      await runLeave()
       Bare.exit(0)
     }
   )

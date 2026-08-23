@@ -1,19 +1,18 @@
 'use strict'
 
 const swarm = require('../contracts')
-const session = require('../core/session')
 const { EVENT_PEER_CONNECTED } = require('../contracts/fixtures')
 const { ensureJoined } = require('./paste')
 
 const DEFAULT_TIMEOUT_MS = 30_000
 
-function runWait(timeoutMs = DEFAULT_TIMEOUT_MS) {
-  ensureJoined()
+async function runWait(timeoutMs = DEFAULT_TIMEOUT_MS) {
+  await ensureJoined()
 
   const status = swarm.getStatus()
   if (status.peers > 0) {
     console.log(`peer connected (${status.peers})`)
-    return Promise.resolve()
+    return
   }
 
   return new Promise((resolve, reject) => {

@@ -1,26 +1,19 @@
 'use strict'
 
+/**
+ * Adapter: Agent-A command surface → Agent-B `src/p2p` (Hyperswarm) o `src/p2p/mock`.
+ * Set `JOJUN_USE_MOCK_P2P=1` para tests/dev sin DHT.
+ */
+const env = require('bare-env')
+const { parseTopic } = require('../p2p/topic')
 const { EVENT_PEER_CONNECTED } = require('./fixtures')
 
-let joined = false
-let topic = null
-let peerCount = 0
-let lastBlob = null
-const messageHandlers = new Set()
-const peerHandlers = new Set()
-let mockPeerTimer = null
+const p2p =
+  env.JOJUN_USE_MOCK_P2P === '1' || env.JOJUN_USE_MOCK_P2P === 'true'
+    ? require('../p2p/mock')
+    : require('../p2p')
 
-function decodeTopic(topicHex) {
-  if (typeof topicHex !== 'string') throw new Error('topic must be a hex string')
-  const trimmed = topicHex.trim().toLowerCase()
-  if (trimmed.length !== 64) {
-    throw new Error('topic must be 64 hex characters (32 bytes)')
-  }
-  if (!/^[0-9a-f]+$/.test(trimmed)) {
-    throw new Error('topic must contain only hex characters')
-  }
-  return trimmed
-}
+let lastBlob = null
 
 function toBuffer(bytes) {
   if (typeof bytes === 'string') return Buffer.from(bytes, 'utf8')
@@ -28,64 +21,49 @@ function toBuffer(bytes) {
   throw new Error('payload must be a string or buffer')
 }
 
-function emitPeerConnected() {
-  const event = { type: EVENT_PEER_CONNECTED, peers: peerCount }
-  for (const handler of peerHandlers) handler(event)
-}
-
-function scheduleMockPeer() {
-  clearTimeout(mockPeerTimer)
-  mockPeerTimer = setTimeout(() => {
-    if (!joined) return
-    peerCount = 1
-    emitPeerConnected()
-  }, 10)
-}
-
-function join(topicHex) {
-  topic = decodeTopic(topicHex)
-  joined = true
-  peerCount = 0
-  scheduleMockPeer()
-  return { topic, joined: true }
+async function join(topicHex) {
+  parseTopic(topicHex)
+  await p2p.join(topicHex)
+  p2p.onMessage((data) => {
+    lastBlob = Buffer.isBuffer(data) ? data : Buffer.from(data)
+  })
+  const st = p2p.status()
+  return { topic: st.topic, joined: st.joined }
 }
 
 function send(bytes) {
-  if (!joined) throw new Error('not joined to a topic; run join first')
   const buf = toBuffer(bytes)
   lastBlob = buf
-  for (const handler of messageHandlers) handler(buf)
+  p2p.send(buf)
   return buf.length
 }
 
 function onMessage(handler) {
-  if (typeof handler !== 'function') throw new Error('onMessage handler must be a function')
-  messageHandlers.add(handler)
-  return () => messageHandlers.delete(handler)
+  return p2p.onMessage(handler)
 }
 
 function onPeer(handler) {
-  if (typeof handler !== 'function') throw new Error('onPeer handler must be a function')
-  peerHandlers.add(handler)
-  return () => peerHandlers.delete(handler)
+  return p2p.on('peer-connected', (event) => {
+    const st = p2p.status()
+    handler({
+      type: EVENT_PEER_CONNECTED,
+      peers: st.peers,
+      publicKey: event.publicKey
+    })
+  })
 }
 
-function leave() {
-  joined = false
-  topic = null
-  peerCount = 0
+async function leave() {
+  await p2p.leave()
   lastBlob = null
-  clearTimeout(mockPeerTimer)
-  mockPeerTimer = null
-  messageHandlers.clear()
-  peerHandlers.clear()
 }
 
 function getStatus() {
+  const st = p2p.status()
   return {
-    joined,
-    topic,
-    peers: peerCount
+    joined: st.joined,
+    topic: st.topic,
+    peers: st.peers
   }
 }
 
@@ -93,9 +71,9 @@ function getLastBlob() {
   return lastBlob
 }
 
-/** Test-only reset — not part of the Agent-B wire-up surface. */
-function _resetForTests() {
-  leave()
+async function _resetForTests() {
+  await p2p.leave()
+  lastBlob = null
 }
 
 module.exports = {

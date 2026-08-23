@@ -4,16 +4,16 @@ const swarm = require('../contracts')
 const session = require('../core/session')
 const { readStdin } = require('../core/stdin')
 
-function ensureJoined() {
+async function ensureJoined() {
   const topic = session.loadTopic()
   if (!topic) throw new Error('not joined to a topic; run join first')
   const status = swarm.getStatus()
-  if (!status.joined || status.topic !== topic) swarm.join(topic)
+  if (!status.joined || status.topic !== topic) await swarm.join(topic)
   return topic
 }
 
 async function runPaste() {
-  ensureJoined()
+  await ensureJoined()
   const bytes = await readStdin()
   const sent = swarm.send(bytes)
   session.saveBlob(bytes)
