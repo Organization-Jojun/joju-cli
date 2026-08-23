@@ -4,7 +4,9 @@ See proposal.md — Why, for motivation. The constraints that shape the approach
 
 **The push path already exists.** `src/p2p/room.js` emits `message` on every `conn.on('data')`, and `src/contracts/swarm.js` exposes `onMessage(handler)` returning an unsubscribe function. `src/cli/session.js` subscribes to none of it. This change is mostly wiring, not new transport.
 
-**The session has no real readline.** `src/core/readline.js` is a 37-line raw line reader: it accumulates `stdio.in` chunks until it sees CR or LF, then resolves. It never sets raw mode, so the TTY stays canonical — the terminal driver echoes keystrokes and buffers the line locally, delivering it only on Enter. The process therefore **cannot see or repaint a partially typed line**. Anything printed asynchronously lands in the middle of it.
+**Input has two modes, and only one of them is exposed to async output.** `src/cli/session.js` calls `trySetRaw(true)` and, when the TTY supports it, runs `loopRawMode()`: it reads a single keystroke at a time via `readRawChunk()` and dispatches immediately. There is no partially typed line at the main prompt in raw mode, so printing there is safe.
+
+Canonical mode is where the risk lives. The session drops back to it in three places — `promptLine()` (which does `trySetRaw(false)`, reads a line, restores), the `/` slash branch inside `loopRawMode()`, and the whole of `loopLineMode()` when raw mode is unavailable. In those, `src/core/readline.js` accumulates `stdio.in` chunks until CR or LF while the terminal driver echoes and buffers the line locally. The process **cannot see or repaint a partially typed line**, so anything printed asynchronously lands in the middle of it.
 
 **Message boundaries are not guaranteed.** `room.js` treats one `data` event as one message. There is no length prefix. A payload larger than a stream chunk arrives as several `data` events and would surface as several separate "messages"; two rapid sends may coalesce into one. This is a pre-existing defect of the wire format, not something auto-receive introduces — but auto-receive makes it *visible*, because today's single-slot model quietly overwrites the fragments and shows only the last one.
 
@@ -39,17 +41,27 @@ The history buffer and direction tagging go in `src/contracts/swarm.js`, beside 
 
 `send()` in `contracts/swarm.js` appends an outgoing entry; the `onMessage` hook appends an incoming one. Direction is recorded where it is known for certain rather than inferred later by comparing payloads.
 
-*Alternative considered:* de-duplicate by comparing an inbound payload against the last sent bytes. Rejected — it misidentifies the legitimate case where a peer sends back the identical text, and it is guesswork where an explicit fact is available.
+*Alternative considered:* de-duplicate by comparing an inbound payload against the last sent bytes. Rejected — it misidentifies the legitimate case where a peer sends back the identical text, and it is guesswork where an explicit fact is available. The echo guard therefore compares object identity against the buffer currently being sent, not content.
+
+### Whether an echo is suppressed is a property of the transport
+
+`src/p2p/mock.js` delivers a sender its own messages so that one process can round-trip; Hyperswarm never does. Each transport module now declares this as `loopsBack`, and the echo guard consults that flag rather than asking whether the mock is selected.
+
+This is what keeps practice mode working. The suppression exists to stop a user seeing their own paste come back as if a peer had sent it — but in practice mode the loopback *is* the peer, and it is the only inbound message that can exist. The tutorial sends and then receives; without the exemption its step 4 shows nothing and its own copy ("You already sent and received") becomes false.
+
+Keying on `loopsBack` rather than on `useMock` states the actual reason at the point of decision, and it stays correct if another transport is ever added.
+
+*Alternative considered:* keep suppression everywhere and rework the tutorial so practice mode never claims a message was received. Rejected — practice mode exists to demonstrate the product to someone with one laptop, and a demonstration where nothing ever arrives does not demonstrate it.
 
 ### Async output is suppressed during sub-prompts, allowed at the main prompt
 
-A session-level flag marks whether a multi-step sub-prompt (`promptLine()` for room name, send text, settings) is open. While it is set, inbound messages are appended to a pending queue rather than printed. When the sub-prompt resolves, the queue is flushed in order and cleared.
+The rule follows the input mode. A session-level counter marks whether the session is currently reading a line in canonical mode — every `promptLine()` call (room name, send text, settings answers, language, setup) and the `/` slash branch of `loopRawMode()`. While it is non-zero, inbound messages are appended to a pending queue rather than printed; when the read finishes the queue is flushed in order and cleared.
 
-At the **main** prompt, inbound messages print immediately, followed by a re-written prompt.
+Everywhere else — which in practice means the raw-mode main prompt — inbound messages print immediately, followed by a re-written prompt. That is safe because `loopRawMode()` consumes each keystroke as it arrives, so there is no half-typed line on screen to corrupt.
 
-The reasoning is about where the user actually is. Sitting at the main prompt is the idle state — it is where the session spends nearly all its time, and where auto-receive has to work or the feature is pointless. Sub-prompts are the short, focused moments when the user is definitely mid-typing and the cost of corrupting their line is highest: an interrupted room name means connecting to the wrong room.
+A counter rather than a boolean because these nest: `doSettings()` is reached from the main loop and then itself calls `promptLine()` twice, and the tutorial drives `doConnect`/`doSend` — which prompt — from inside its own flow. A boolean would be cleared by the inner prompt while the outer one was still open.
 
-This does not fully solve async output. A message that arrives while the user is typing at the *main* prompt will still interleave: the terminal has already echoed their partial input, the process cannot repaint it, and the result looks like
+This does not solve async output in the fallback `loopLineMode()`, used when the TTY does not support raw mode. There the main prompt is a canonical line read, and a message arriving mid-typing will interleave:
 
 ```
 jojun › hel
@@ -57,7 +69,7 @@ jojun › hel
 jojun › 
 ```
 
-with `hel` still sitting in the terminal's line buffer and only `lo` visibly following the new prompt. No input is lost — the full line `hello` is still delivered on Enter — but it reads as garbled. Accepted for now, and called out in Risks.
+with `hel` still in the terminal's line buffer and only `lo` visibly following the new prompt. No input is lost — the full line `hello` is still delivered on Enter — but it reads as garbled. Accepted: it is the degraded path on terminals that already cannot do single-key dispatch.
 
 *Alternatives considered:*
 - *Queue everything and flush only after a command completes.* Safe, but it means a message sitting invisible while the user stares at an idle prompt — which is precisely the problem this change exists to fix.
@@ -77,7 +89,7 @@ This matters because `contracts.leave()` resets `messageHooked = false` and `src
 
 ## Risks / Trade-offs
 
-**Interleaved output while typing at the main prompt** → Bounded by the sub-prompt queue, which covers the highest-cost cases (room name, message text, settings answers). The residual case garbles the display but never loses input. The proper fix is a raw-mode line editor, deliberately scoped out; this design leaves the seam for it.
+**Interleaved output during a canonical line read** → Bounded by the queue, which covers every `promptLine()` and the `/` branch. The residual case is the main prompt of the fallback `loopLineMode()` only, on terminals without raw-mode support; it garbles the display but never loses input. The proper fix is a redrawable line editor, deliberately scoped out; the queue-and-flush seam is where it would hook in.
 
 **Unframed messages become user-visible** → A large paste that arrives as several `data` events will now render as several separate received messages instead of being silently collapsed to the last fragment. This is arguably an improvement — the fragmentation stops being invisible — but it will look like a new bug to anyone who pastes something large. Mitigation: state the practical size limit in the README rather than implying arbitrary payloads work, and treat length-prefixed framing as the follow-up change this exposes the need for.
 

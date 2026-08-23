@@ -28,19 +28,35 @@ While the session is connected to a room, the system SHALL display each inbound 
 
 ### Requirement: Locally sent messages are never shown as received
 
-The system SHALL record the direction of every message in the session. A message the local user sent SHALL NOT be displayed as an inbound message and SHALL NOT be returned by replay as though it had been received.
+The system SHALL record the direction of every message in the session.
 
-#### Scenario: User sends a message and then replays
+On a connection where the network does not deliver a sender its own messages — a real room with a remote peer — a message the local user sent SHALL NOT be displayed as an inbound message and SHALL NOT be returned by replay as though it had been received.
 
-- **WHEN** the user sends a message from this machine and no peer has sent anything
+Practice mode is the deliberate exception. There the other PC is simulated inside this process, and the simulated peer's delivery of the message is the only inbound message that can exist, so it SHALL be treated as received. Whether a connection behaves this way SHALL be a property of the connection itself, not a judgement made per message.
+
+#### Scenario: User sends a message to a real room and then replays
+
+- **WHEN** the user is in a real room with a remote peer, sends a message, and no peer has sent anything
 - **THEN** no inbound message is displayed at any point as a result of that send
 - **AND** replaying the received history reports that no messages have been received
 
-#### Scenario: User sends, then a peer sends
+#### Scenario: User sends to a real room, then a peer sends
 
-- **WHEN** the user sends a message from this machine and afterwards a peer sends a different message
+- **WHEN** the user is in a real room, sends a message, and afterwards a peer sends a different message
 - **THEN** only the peer's message is displayed as received
 - **AND** replay reports the peer's message and not the locally sent one
+
+#### Scenario: Practice mode shows the simulated peer's delivery
+
+- **WHEN** the user is in practice mode and sends a message
+- **THEN** the message is displayed as received, because the simulated other PC delivered it
+- **AND** replay reports it
+
+#### Scenario: Direction is recorded in both modes
+
+- **WHEN** the user sends a message in either mode
+- **THEN** that send is recorded as outgoing
+- **AND** any delivery of it that arrives back is recorded separately as incoming
 
 ### Requirement: Received message history and replay
 

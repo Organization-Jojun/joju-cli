@@ -514,3 +514,173 @@ test('uninstall: the running executable is reported, never silently skipped', (t
   t.ok(binary, 'still present in the plan')
   t.is(binary.action, isWindows ? 'manual' : 'remove')
 })
+
+// A real peer message: emitted on the room, so it does not pass through
+// contracts.send() and is therefore genuinely inbound.
+function peerSends(text) {
+  mock.getRoom().emit('message', Buffer.from(text, 'utf8'))
+}
+
+test('history: received messages are kept in arrival order', async (t) => {
+  await swarm._resetForTests()
+  await swarm.join(fixtures.TOPIC_HEX)
+
+  peerSends('one')
+  peerSends('two')
+  peerSends('three')
+
+  const received = swarm.getReceived()
+  t.is(received.length, 3)
+  t.alike(
+    received.map((entry) => entry.bytes.toString('utf8')),
+    ['one', 'two', 'three']
+  )
+  t.is(swarm.getLastReceived().bytes.toString('utf8'), 'three')
+})
+
+test('history: keeps the 50 most recent received and drops the oldest', async (t) => {
+  await swarm._resetForTests()
+  await swarm.join(fixtures.TOPIC_HEX)
+
+  for (let i = 1; i <= 55; i++) peerSends('msg-' + i)
+
+  const received = swarm.getReceived()
+  t.is(received.length, 50)
+  t.is(received[0].bytes.toString('utf8'), 'msg-6', 'oldest five dropped')
+  t.is(received[49].bytes.toString('utf8'), 'msg-55')
+})
+
+test('transports: only the looping-back one is exempt from echo suppression', (t) => {
+  // The mock is the simulated other PC in practice mode, so its echo counts as
+  // received. Hyperswarm never echoes, so a local send there must be filtered.
+  t.is(require('../src/p2p/mock').loopsBack, true)
+  t.is(require('../src/p2p').loopsBack, false)
+})
+
+test('history: every message is direction-tagged', async (t) => {
+  await swarm._resetForTests()
+  await swarm.join(fixtures.TOPIC_HEX)
+
+  swarm.send('mine')
+
+  const history = swarm.getHistory()
+  t.is(history.length, 2, 'sent once, and the simulated peer delivered it back')
+  t.is(history[0].direction, 'out')
+  t.is(history[1].direction, 'in')
+  t.is(history[0].bytes.toString('utf8'), 'mine')
+})
+
+test('practice mode: the simulated peer delivers your own send back', async (t) => {
+  await swarm._resetForTests()
+  await swarm.join(fixtures.TOPIC_HEX)
+
+  swarm.send('hello jojun')
+
+  // What the tutorial relies on: send, then Receive shows something.
+  t.is(swarm.getLastReceived().bytes.toString('utf8'), 'hello jojun')
+  t.is(swarm.getReceived().length, 1)
+})
+
+test('history: a peer message after a local send is also received', async (t) => {
+  await swarm._resetForTests()
+  await swarm.join(fixtures.TOPIC_HEX)
+
+  swarm.send('mine')
+  peerSends('theirs')
+
+  t.alike(
+    swarm.getReceived().map((entry) => entry.bytes.toString('utf8')),
+    ['mine', 'theirs']
+  )
+  t.is(swarm.getLastReceived().bytes.toString('utf8'), 'theirs', 'replay shows the newest')
+})
+
+test('history: onMessage stays the raw transport hook', async (t) => {
+  await swarm._resetForTests()
+  await swarm.join(fixtures.TOPIC_HEX)
+
+  const viaReceived = []
+  const viaMessage = []
+  const unsubA = swarm.onReceived((bytes) => viaReceived.push(bytes.toString('utf8')))
+  const unsubB = swarm.onMessage((bytes) => viaMessage.push(bytes.toString('utf8')))
+
+  swarm.send('mine')
+  peerSends('theirs')
+
+  t.alike(viaMessage, ['mine', 'theirs'], 'unchanged by this feature')
+  t.alike(viaReceived, ['mine', 'theirs'], 'on a looping-back transport nothing is filtered')
+
+  unsubA()
+  unsubB()
+})
+
+test('history: unsubscribing stops delivery', async (t) => {
+  await swarm._resetForTests()
+  await swarm.join(fixtures.TOPIC_HEX)
+
+  const seen = []
+  const unsub = swarm.onReceived((bytes) => seen.push(bytes.toString('utf8')))
+  peerSends('before')
+  unsub()
+  peerSends('after')
+
+  t.alike(seen, ['before'])
+})
+
+test('history: replay with nothing received returns null, not an error', async (t) => {
+  await swarm._resetForTests()
+  await swarm.join(fixtures.TOPIC_HEX)
+
+  t.is(swarm.getLastReceived(), null)
+  t.is(swarm.getReceived().length, 0)
+})
+
+test('history: leaving clears it', async (t) => {
+  await swarm._resetForTests()
+  await swarm.join(fixtures.TOPIC_HEX)
+
+  peerSends('one')
+  t.is(swarm.getReceived().length, 1)
+
+  await swarm.leave()
+  t.is(swarm.getReceived().length, 0)
+  t.is(swarm.getLastReceived(), null)
+})
+
+test('history: getLastBlob and waitForBlob are unchanged', async (t) => {
+  await swarm._resetForTests()
+  await swarm.join(fixtures.TOPIC_HEX)
+
+  t.is(swarm.getLastBlob(), null)
+
+  peerSends('landed')
+  t.is(swarm.getLastBlob().toString('utf8'), 'landed', 'still tracks the newest blob')
+
+  // still short-circuits when a blob is already present
+  const blob = await swarm.waitForBlob(50)
+  t.is(blob.toString('utf8'), 'landed')
+
+  await swarm._resetForTests()
+  await swarm.join(fixtures.TOPIC_HEX)
+  swarm.send('sent-locally')
+  t.is(swarm.getLastBlob().toString('utf8'), 'sent-locally', 'send still sets lastBlob')
+})
+
+test('prefs: autoReceive defaults on and survives an older ui.json', (t) => {
+  const { DEFAULTS, loadPrefs, savePrefs } = require('../src/cli/prefs')
+  t.is(DEFAULTS.autoReceive, true)
+
+  const dir = pathTest.join(osTest.tmpdir(), 'jojun-prefs-' + Date.now())
+  fsTest.mkdirSync(dir, { recursive: true })
+  // an old file written before this key existed
+  fsTest.writeFileSync(pathTest.join(dir, 'ui.json'), JSON.stringify({ lang: 'es' }))
+
+  const loaded = loadPrefs(dir)
+  t.is(loaded.autoReceive, true, 'missing key picks up the default')
+  t.is(loaded.lang, 'es', 'existing keys preserved')
+
+  savePrefs(dir, { ...loaded, autoReceive: false })
+  t.is(loadPrefs(dir).autoReceive, false, 'the choice persists')
+
+  fsTest.rmSync(dir, { recursive: true, force: true })
+})

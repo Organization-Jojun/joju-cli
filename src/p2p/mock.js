@@ -111,6 +111,9 @@ function getRoom() {
 }
 
 module.exports = {
+  // This transport delivers a sender its own messages: it is the simulated
+  // other PC in practice mode, so that echo is a real inbound message.
+  loopsBack: true,
   join,
   send,
   flush,
