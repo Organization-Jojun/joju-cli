@@ -16,6 +16,18 @@ Jojun is a **room clipboard**: same 32-byte topic hex on both sides, paste here,
 
 The Pear requirement is not decoration: **if `pear install` and OTA do not work, the entry does not count.** The CLI is the product; the pipeline is the ticket to judging.
 
+### UI / UX / DX (why it is a CLI, not a TUI)
+
+The Pears template we shipped is **`variant/daemon`**: each command does one thing and **exits**. A full-screen TUI (Herdr-style panes, keyboard overlay) would fight that process shape and was a hard-cut in our freeze.
+
+What we ship instead, for the **UI/UX/DX** rubric:
+
+- Numbered **menu** when you run `jojun` in a terminal (or `jojun --menu`): pick 1–5, no need to memorize flags.
+- Windows launcher **`jojun.cmd`**: type `jojun` instead of the long Bare path.
+- `--help` / `keys` list the five actions.
+- Pear 3.2+ also has `pear --menu` (official command explorer).
+- Developers: `npm start`, `npm test`, `--json` for scripts.
+
 ---
 
 ## Team
@@ -44,7 +56,7 @@ This is **not Node.js at runtime**. The CLI runs on **Bare** inside **Pear**.
 | Tests | `brittle` via `bare-runtime` |
 | Package | `bare-build` → `out/<platform>-<arch>/` |
 
-**Out of MVP (on purpose):** TUI, Herdr clone, Hypercore, Hyperdrive, BLE-Swarm.
+**Out of MVP (on purpose):** full-screen TUI, Herdr clone, Hypercore, Hyperdrive, BLE-Swarm. We use a **one-shot numbered menu**, not an overlay editor.
 
 ---
 

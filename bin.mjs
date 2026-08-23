@@ -2,6 +2,8 @@ import { flag } from 'paparam'
 import path from 'bare-path'
 import pkg from './package.json'
 import { createCommands, createRootCommand, ACTIONS } from './src/cli/index.js'
+import { runMenu, printStaticHelp } from './src/cli/menu.js'
+import { isInteractive } from './src/core/readline.js'
 import { spawnUpdaterIfEnabled, runUpdaterDaemon } from './src/core/updater.js'
 
 const appName = pkg.productName || pkg.name
@@ -70,7 +72,13 @@ const flags = getFlags(rootCmd)
 ensureUpdatesFlag(flags)
 spawnUpdaterIfEnabled({ flags, appName, isDev, pkg })
 printUpdatesLine(flags)
-console.log('\nCLI ready.\n')
+
+if (isInteractive() || argv.includes('--menu')) {
+  await runMenu({ flags, appName, isDev })
+} else {
+  printStaticHelp()
+  console.log('CLI ready.\n')
+}
 
 function ensureUpdatesFlag(flags) {
   if (flags.noUpdates) flags.updates = false

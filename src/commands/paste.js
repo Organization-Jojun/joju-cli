@@ -9,7 +9,7 @@ const { runWait } = require('./wait')
 
 async function runPaste(opts = {}) {
   await ensureJoined()
-  const bytes = await readStdin()
+  const bytes = opts.bytes !== undefined ? opts.bytes : await readStdin()
   const timeout = opts.timeout || 30_000
   await runWait(timeout, { json: false, silent: true })
   const sent = swarm.send(bytes)
