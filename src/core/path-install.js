@@ -24,6 +24,25 @@ function alreadyOnPath(dir) {
   return pathHasDir(env.PATH || env.Path || '', dir)
 }
 
+function unixExportLine(dir, isFish) {
+  return isFish ? '\nfish_add_path ' + dir : '\nexport PATH="$PATH:' + dir + '"'
+}
+
+function unixShellConfig(shellPath) {
+  const shell = path.basename(String(shellPath || ''))
+  const candidates = {
+    zsh: '.zshrc',
+    bash: '.bash_profile',
+    fish: '.config/fish/config.fish',
+    ksh: '.kshrc',
+    sh: '.profile'
+  }
+  return {
+    isFish: shell === 'fish',
+    rel: candidates[shell] || '.profile'
+  }
+}
+
 function psQuote(value) {
   return "'" + String(value).replace(/'/g, "''") + "'"
 }
@@ -66,20 +85,56 @@ function ensureWindowsUserPath(dir) {
   return { added: false, reason: 'already-user' }
 }
 
+function ensureUnixUserPath(dir) {
+  if (alreadyOnPath(dir)) return { added: false, reason: 'session-path' }
+
+  let fs
+  try {
+    fs = require('bare-fs')
+  } catch {
+    return { added: false, reason: 'no-fs' }
+  }
+
+  const home = os.homedir()
+  const { isFish, rel } = unixShellConfig(env.SHELL)
+  const configFile = path.join(home, rel)
+  const exportLine = unixExportLine(dir, isFish)
+  const marker = exportLine.trim()
+
+  let content = ''
+  try {
+    content = fs.readFileSync(configFile, 'utf8')
+  } catch {
+    content = ''
+  }
+  if (content.includes(marker)) return { added: false, reason: 'already-rc' }
+
+  try {
+    fs.mkdirSync(path.dirname(configFile), { recursive: true })
+    fs.appendFileSync(configFile, exportLine.endsWith('\n') ? exportLine : exportLine + '\n')
+  } catch (err) {
+    return { added: false, reason: 'write', detail: String(err && err.message) }
+  }
+  return { added: true }
+}
+
 /**
- * Standalone binary: put its folder on the user PATH (Windows).
- * Pear install usually does this; this covers first-run if it did not.
- * Never uses setx (it truncates PATH).
+ * Standalone binary: put its folder on the user PATH.
+ * Windows: user PATH via PowerShell (never setx).
+ * macOS/Linux: append to zshrc / bash_profile / fish.
+ * pear-install on Mac skips writing rc if ~/.local/bin is already on PATH
+ * (Pear lives there). Then `jojun` only works if the file is in that folder.
  */
 function ensureOnPath() {
-  if (os.platform() !== 'win32') return { added: false, reason: 'not-windows' }
-
   const exe = os.execPath()
   const dir = path.dirname(exe)
   const base = path.basename(exe, path.extname(exe)).toLowerCase()
   if (base === 'bare' || base === 'node') return { added: false, reason: 'dev-runtime' }
 
-  return ensureWindowsUserPath(dir)
+  const platform = os.platform()
+  if (platform === 'win32') return ensureWindowsUserPath(dir)
+  if (platform === 'darwin' || platform === 'linux') return ensureUnixUserPath(dir)
+  return { added: false, reason: 'unsupported' }
 }
 
 function readWindowsUserPath(spawnSync) {
@@ -169,5 +224,7 @@ module.exports = {
   alreadyOnPath,
   normalizeDir,
   removeFromPathValue,
-  removeWindowsUserPath
+  removeWindowsUserPath,
+  unixExportLine,
+  unixShellConfig
 }

@@ -684,3 +684,59 @@ test('prefs: autoReceive defaults on and survives an older ui.json', (t) => {
 
   fsTest.rmSync(dir, { recursive: true, force: true })
 })
+
+test('pear-install: Windows client looks for name.exe not Jojun/name.exe', (t) => {
+  const pkg = require('../package.json')
+  t.is(typeof pkg.bin, 'string')
+  const host = 'win32-x64'
+  const required = '/by-arch/' + host + '/app/' + pkg.name + '.exe'
+  t.is(required, '/by-arch/win32-x64/app/jojun.exe')
+  t.ok(!required.includes('/Jojun/jojun.exe'))
+})
+
+test('pear-install: macOS client looks for ~/.local/bin/jojun (bin name, no .app)', (t) => {
+  const pkg = require('../package.json')
+  const home = '/Users/judge'
+  const dest = home + '/.local/bin/' + pkg.name
+  t.is(dest, '/Users/judge/.local/bin/jojun')
+  const required = '/by-arch/darwin-arm64/app/' + pkg.name
+  t.is(required, '/by-arch/darwin-arm64/app/jojun')
+})
+
+test('path-install: unix PATH export matches pear-install rc snippet', (t) => {
+  const { unixExportLine, unixShellConfig } = require('../src/core/path-install')
+  t.is(unixShellConfig('/bin/zsh').rel, '.zshrc')
+  t.is(unixShellConfig('/bin/zsh').isFish, false)
+  t.is(unixExportLine('/Users/x/.local/bin', false), '\nexport PATH="$PATH:/Users/x/.local/bin"')
+  t.ok(unixExportLine('/Users/x/.local/bin', true).includes('fish_add_path'))
+})
+
+test('darwin binary: Mach-O arm64 with LC_CODE_SIGNATURE (Apple Silicon will SIGKILL if that blob is stale)', (t) => {
+  const fs = require('bare-fs')
+  const path = require('bare-path')
+  const os = require('bare-os')
+  const cwd = typeof os.cwd === 'function' ? os.cwd() : os.cwd
+  const p = path.join(cwd, 'out', 'darwin-arm64', 'jojun')
+  if (!fs.existsSync(p)) {
+    t.pass('no local darwin-arm64 binary')
+    return
+  }
+  const fd = fs.openSync(p, 'r')
+  const head = Buffer.alloc(8)
+  fs.readSync(fd, head, 0, 8, 0)
+  fs.closeSync(fd)
+  t.alike(head.subarray(0, 4), Buffer.from([0xcf, 0xfa, 0xed, 0xfe]))
+})
+
+test('darwin wrap: staged jojun is a shell launcher; payload is the Mach-O; first run codesigns', (t) => {
+  const { wrapDarwinBin } = require('../scripts/darwin-wrap.js')
+  const macho = Buffer.from([0xcf, 0xfa, 0xed, 0xfe, 0x0c, 0x00, 0x00, 0x01, 9, 8, 7, 6])
+  const { buf, skip, header } = wrapDarwinBin(macho)
+  t.ok(header.startsWith('#!/bin/sh'))
+  t.ok(header.includes('codesign --force --sign -'))
+  t.ok(header.includes('tail -c +'))
+  t.ok(!header.includes('obs=1048576'))
+  t.is(skip, Buffer.byteLength(header, 'utf8'))
+  t.ok(buf.subarray(0, 2).equals(Buffer.from('#!')))
+  t.ok(buf.subarray(skip).equals(macho))
+})

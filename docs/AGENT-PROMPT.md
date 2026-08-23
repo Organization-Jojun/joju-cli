@@ -39,12 +39,14 @@ Print: OS, arch (arm64 vs x64), whether `pear` and `jojun` are already on PATH.
   If `jojun` is unknown: run that exe once (it can append its folder to user PATH without setx). Then open a NEW terminal.
   If pear install fails or times out: git clone the repo, npm install, npm run make, copy out\win32-x64\jojun.exe to that Programs\Jojun folder and run it.
 
-### macOS / Linux (native build — the seeded Pear release is Windows x64)
-  git clone https://github.com/Organization-Jojun/joju-cli.git
-  cd joju-cli && git checkout main && git pull && npm install && npm test && npm run make
-  Binary: ./out/darwin-arm64/jojun  or  ./out/darwin-x64/jojun  or  ./out/linux-arm64/jojun  or  ./out/linux-x64/jojun
-  You may `pear install` the same link; it will not give a native Mac/Linux CLI until the owner restages those archs. Prefer the local `out/…/jojun`.
-  Optional: copy the binary to a folder on PATH and rename to jojun.
+### macOS (Apple Silicon: darwin-arm64)
+  pear install pear://ta114oog37s3wfdwmp6wz7x4uucjoxckd7t4acxns7s33xbc7oeo
+  Binary: ~/.local/bin/jojun (same dir as pear). First run codesigns the Mach-O then execs it.
+  If `pear` works, that dir is already on PATH. New terminal if needed.
+  If pear install has no darwin binary: git clone, npm install, npm run make, npm run sign skipped on Linux; on Mac make already codesigns. Copy out/darwin-arm64/jojun to ~/.local/bin/jojun.
+
+### Linux
+  pear install may 404 the linux binary until restaged. Fallback: git clone, npm run make, copy out/linux-*/jojun to ~/.local/bin/jojun.
 
 ## 4. Smoke (must pass)
 Do not use mock env.

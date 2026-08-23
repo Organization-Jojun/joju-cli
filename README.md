@@ -31,6 +31,8 @@ jojun
 
 On Windows the binary lands at `%LOCALAPPDATA%\Programs\Jojun\jojun.exe`. Pear v3 should add that folder to your **user PATH**. If `jojun` is still unknown, run that `.exe` once: Jojun **appends its own folder** to the user PATH (it does not use `setx`, which truncates PATH). Then open another terminal.
 
+On **macOS**, `pear install` puts `jojun` in `~/.local/bin` (same folder as `pear`). The staged file is a small launcher: on first run it extracts the Mach-O, runs `codesign --force --sign -` (Apple Silicon otherwise SIGKILLs a stale ad-hoc signature), then execs it. If `pear` works in that terminal, `jojun` should too after one successful launch. Open a new terminal if PATH was just updated.
+
 You should see the pixel **pigeon + JOJUN** splash, then a setup question, then the menu. Interactive sessions **do not** spawn the OTA daemon (so it cannot paint over the TTY). One-shot commands still can.
 
 OTA errors go to `<storage>/updates.log`, not the terminal.
@@ -183,13 +185,13 @@ Windows x64: `out/win32-x64/jojun.exe`. First run can register PATH. Rebuild + c
 
 ## Release (maintainers)
 
-Do **not** `pear stage` the git checkout (it would ship `.git` / `node_modules`). Ship a **pear build** of the standalone binary:
+Do **not** `pear stage` the git checkout. Do **not** pass a folder named `Jojun` to `pear build --win32-x64-app`: that nests the binary at `by-arch/win32-x64/app/Jojun/jojun.exe`, and `pear install` looks for `by-arch/win32-x64/app/jojun.exe` (`package.json` `name` + `bin`).
 
 ```bash
 npm run make
-# pear build --package package.json --target <deploy-dir> --win32-x64-app <folder named Jojun containing jojun.exe>
-# pear stage pear://ta114oog37s3wfdwmp6wz7x4uucjoxckd7t4acxns7s33xbc7oeo <deploy-dir>
-npm run seed          # leave running while people pear install
+npm run package-release   # writes release-bundle/by-arch/win32-x64/app/jojun.exe
+npm run stage             # pear stage the bundle, not the repo
+npm run seed              # leave running (or keep the EC2 seeder up)
 ```
 
 Upgrade link (do not regenerate):
