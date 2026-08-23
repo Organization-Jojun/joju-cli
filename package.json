@@ -1,7 +1,7 @@
 {
   "name": "jojun",
   "productName": "Jojun",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Paste on one machine, yank on the other — Hyperswarm topic CLI with Pear OTA.",
   "private": true,
   "bin": "bin.mjs",
