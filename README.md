@@ -1,44 +1,127 @@
 # Jojun
 
-CLI Pear/Bare: pegás un blob en una máquina (`paste`) y lo sacás en la otra (`yank`) por un topic de Hyperswarm. El binario se actualiza solo (OTA P2P).
+**Paste on one machine. Yank on the other. No Discord, no USB, no server.**
 
-Salimos de [`hello-pear-bare`](https://github.com/holepunchto/hello-pear-bare) rama **`variant/daemon`**.
+Jojun is a one-shot CLI for a room full of laptops: you join a shared Hyperswarm topic, `paste` a snippet from stdin on one machine, and `yank` it to stdout on another. The binary is a Pear app (`variant/daemon`) so it installs with `pear install pear://…` and updates itself over P2P OTA.
 
-Instalar (cuando el seed esté vivo):
+Built for the **[Aleph 2026 Pears Track](https://docs.pears.com/)** (sponsor Tether).
 
-```
-pear install pear://ta114oog37s3wfdwmp6wz7x4uucjoxckd7t4acxns7s33xbc7oeo
-```
+---
 
-## Windows (esta máquina — Jonatin)
+## Why it exists
 
-Pear CLI v3.2.0 suele estar en:
+At a hackathon you constantly need to move a small blob — a key, a snippet, a log line — between two machines. Chat apps are noisy. USB is slow. A server is a single point of failure and extra accounts.
 
-`C:\Users\Jonatin\AppData\Local\Programs\pear\pear.exe`
+Jojun is a **room clipboard**: same 32-byte topic hex on both sides, paste here, yank there. If the other peer is not online, the stream is gone (no Hypercore disk). That is intentional for the MVP.
 
-Abrí una terminal **nueva** si acabás de instalarla, para que entre en el PATH.
+The Pear requirement is not decoration: **if `pear install` and OTA do not work, the entry does not count.** The CLI is the product; the pipeline is the ticket to judging.
 
-```powershell
-cd C:\Users\Jonatin\Documents\JonatinProjects\HackathonJonjun\joju-cli
-npm install
+---
 
-# tests (mock, sin DHT)
-npm test
+## Team
 
-# smoke CLI (updates off)
-npm start
+| Person | Role |
+|---|---|
+| **Jonatin** ([Jonathanrbt](https://github.com/Jonathanrbt)) | Product, CLI (`join` / `paste` / `yank` / `wait` / `leave`), Windows binary, seed during judging |
+| **Julián (Julidev)** | P2P Hyperswarm layer, Pear `stage` / `seed` scripts, OTA daemon shape |
 
-# help
-node .\node_modules\bare-runtime\bin\bare bin.mjs --no-updates --help
-```
+Repo: [Organization-Jojun/joju-cli](https://github.com/Organization-Jojun/joju-cli) (Apache-2.0).
 
-Topic de fixtures (64 hex):
+---
+
+## Stack
+
+This is **not Node.js at runtime**. The CLI runs on **Bare** inside **Pear**.
+
+| Piece | What we use |
+|---|---|
+| Runtime | [Pear](https://docs.pears.com/) + [Bare](https://docs.pears.com/reference/bare/runtime/) |
+| Template | [`hello-pear-bare`](https://github.com/holepunchto/hello-pear-bare) branch **`variant/daemon`** (command exits; updater is a sidecar daemon) |
+| CLI parser | [`paparam`](https://github.com/holepunchto/paparam) |
+| Product P2P | [Hyperswarm](https://docs.pears.com/how-to/connect-to-peers/) topic (join / send / recv) |
+| OTA | `pear-runtime` + `package.json` field `upgrade` |
+| Bare modules | `bare-fs`, `bare-os`, `bare-path`, `bare-process`, `bare-stdio`, `bare-env`, `bare-storage`, `bare-daemon` |
+| Tests | `brittle` via `bare-runtime` |
+| Package | `bare-build` → `out/<platform>-<arch>/` |
+
+**Out of MVP (on purpose):** TUI, Herdr clone, Hypercore, Hyperdrive, BLE-Swarm.
+
+---
+
+## What the CLI does
+
+Jojun is **one-shot**: every invocation does work and **exits**. Session (last topic + last blob) lives under `--storage` (default: Pear persistent dir / temp in dev).
+
+Shared fixture topic (64 hex chars = 32 bytes):
 
 ```
 68656c6c6f2d6a6f6a756e000000000000000000000000000000000000000000
 ```
 
-### Probar en una sola terminal (mock, sin red)
+| Command | What it solves |
+|---|---|
+| `join <topic>` | Remember and join that Hyperswarm topic |
+| `paste` | Read **stdin**, wait for a peer, broadcast the blob |
+| `yank` | Write the last received blob to **stdout** (waits if needed) |
+| `wait` | Block until another peer is on the topic |
+| `leave` | Drop the topic and clear local session |
+| `keys` | Print the five actions (join, paste, yank, wait, leave) |
+
+Global flags:
+
+| Flag | Meaning |
+|---|---|
+| `--no-updates` | Do not spawn the OTA daemon this run (use in dev) |
+| `--storage <dir>` | Where session + updater state live |
+| `--json` | Status as one JSON line (`yank` still prints raw bytes) |
+| `--help` / `-h` | Help |
+| `--version` / `-v` | Version |
+| `--timeout` / `-t` | On `paste`, `yank`, `wait` — how long to wait (ms) |
+
+Typical flow **two machines, same topic**:
+
+1. Both: `join <topic>`
+2. Receiver: `yank` (waits for bytes)
+3. Sender: pipe something into `paste`
+4. Receiver stdout is the blob
+
+---
+
+## Install (judges / clean machine)
+
+Pear CLI first: https://install.pears.com
+
+```bash
+pear install pear://ta114oog37s3wfdwmp6wz7x4uucjoxckd7t4acxns7s33xbc7oeo
+```
+
+Someone must be **seeding** that link (`npm run seed`) for the whole judging window. Seed host: Jonatin (Windows).
+
+OTA errors go to `<storage>/updates.log`, not the terminal (`variant/daemon`).
+
+---
+
+## Develop from source
+
+```bash
+git clone https://github.com/Organization-Jojun/joju-cli.git
+cd joju-cli
+npm install
+npm test          # unit + mock swarm (no DHT)
+npm start         # prints: Updates: disabled  /  CLI ready.
+```
+
+Run a command with Bare (updates off):
+
+```bash
+# macOS / Linux
+node ./node_modules/bare-runtime/bin/bare bin.mjs --no-updates --help
+
+# Windows (PowerShell)
+node .\node_modules\bare-runtime\bin\bare bin.mjs --no-updates --help
+```
+
+### Mock (one terminal, no network)
 
 ```powershell
 $env:JOJUN_USE_MOCK_P2P = "1"
@@ -51,50 +134,65 @@ node $bare bin.mjs --no-updates --storage $storage join $topic
 node $bare bin.mjs --no-updates --storage $storage yank
 ```
 
-### Probar P2P real (dos ventanas, mismo topic, **sin** `JOJUN_USE_MOCK_P2P`)
+### Real Hyperswarm (two terminals)
 
-Ventana A (espera un blob):
+Do **not** set `JOJUN_USE_MOCK_P2P`. Use **different** `--storage` dirs. Start `yank` on A, then `paste` on B.
 
-```powershell
-$topic = "68656c6c6f2d6a6f6a756e000000000000000000000000000000000000000000"
-$bare = ".\node_modules\bare-runtime\bin\bare"
-node $bare bin.mjs --no-updates --storage "$env:TEMP\jojun-a" join $topic
-node $bare bin.mjs --no-updates --storage "$env:TEMP\jojun-a" yank --timeout 60000
+Windows smoke script: `powershell -File scripts\smoke-windows.ps1`
+
+P2P integration test (needs DHT; can flake on VMs):
+
+```bash
+npm run test:p2p
 ```
 
-Ventana B (pega):
+---
 
-```powershell
-$topic = "68656c6c6f2d6a6f6a756e000000000000000000000000000000000000000000"
-$bare = ".\node_modules\bare-runtime\bin\bare"
-node $bare bin.mjs --no-updates --storage "$env:TEMP\jojun-b" join $topic
-"hello jojun" | node $bare bin.mjs --no-updates --storage "$env:TEMP\jojun-b" paste --timeout 60000
+## Standalone binary
+
+```bash
+npm run make
 ```
 
-`wait` bloquea hasta que hay un peer. `--json` imprime estado en una línea JSON (yank sigue siendo bytes crudos en stdout).
-
-### Binario y deploy (requisito duro del track)
+Output: `out/<os>-<arch>/` — on Windows x64 that is `out/win32-x64/jojun.exe`.
 
 ```powershell
-npm run make                 # out\win32-x64\jojun.exe
+.\out\win32-x64\jojun.exe --no-updates --help
+.\out\win32-x64\jojun.exe --no-updates join 68656c6c6f2d6a6f6a756e000000000000000000000000000000000000000000
+```
+
+---
+
+## Release pipeline (Pear)
+
+`upgrade` in `package.json` (do not regenerate unless you know why):
+
+`pear://ta114oog37s3wfdwmp6wz7x4uucjoxckd7t4acxns7s33xbc7oeo`
+
+```bash
 npm run stage -- --dry-run
-npm run stage                # escribe al pear:// (identidad Pear de esta PC)
-npm run seed                 # proceso vivo — dejarlo encendido en juzgamiento
+npm run stage
+npm run seed          # long-lived; keep running while people pear install
 ```
 
-OTA: el comando sale; el updater es daemon. Logs: `<storage>\updates.log`.
+Windows Pear binary is typically:
 
-## Comandos
+`%LOCALAPPDATA%\Programs\pear\pear.exe`
 
-| Acción | Qué hace |
-|---|---|
-| `join <topic>` | entra al topic (64 hex) |
-| `paste` | stdin → swarm (espera peer) |
-| `yank` | último blob a stdout (espera si hace falta) |
-| `wait` | espera un peer |
-| `leave` | sale |
-| `keys` | lista las cinco |
+---
 
-Flags globales: `--no-updates`, `--storage`, `--json`, `--help`, `--version`.
+## Layout
 
-Corte vivo: [`PROYECTO.md`](PROYECTO.md).
+```
+bin.mjs            entry (paparam + updater spawn)
+app.js             Pear updater daemon (variant/daemon)
+src/commands/      join paste yank wait leave
+src/cli/           command tree
+src/core/          stdin/stdout, session, updater helpers
+src/contracts/     adapter CLI ↔ P2P
+src/p2p/           Hyperswarm room + offline mock
+src/deploy/        pear stage/seed wrappers
+src/update/        updates.log helper
+```
+
+More product rules: [`PROYECTO.md`](PROYECTO.md). Clock / ownership: [`docs/PLAN.md`](docs/PLAN.md).
