@@ -43,7 +43,7 @@ async function runWait(timeoutMs = DEFAULT_TIMEOUT_MS, opts = {}) {
 
     const cleanup = () => {
       clearTimeout(timer)
-      unsubscribe()
+      if (typeof unsubscribe === 'function') unsubscribe()
     }
 
     const unsubscribe = swarm.onPeer(onPeer)

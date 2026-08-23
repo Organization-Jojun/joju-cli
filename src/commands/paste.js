@@ -13,6 +13,7 @@ async function runPaste(opts = {}) {
   const timeout = opts.timeout || 30_000
   await runWait(timeout, { json: false, silent: true })
   const sent = swarm.send(bytes)
+  if (sent.delivered) await swarm.flush()
   session.saveBlob(bytes)
   const human = sent.delivered
     ? `pasted ${sent.length} bytes`

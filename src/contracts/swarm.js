@@ -60,6 +60,10 @@ function send(bytes) {
   return { length: buf.length, delivered: ok !== false }
 }
 
+async function flush() {
+  return p2p.flush()
+}
+
 function onMessage(handler) {
   hookMessages()
   return p2p.onMessage(handler)
@@ -131,6 +135,7 @@ async function _resetForTests() {
 module.exports = {
   join,
   send,
+  flush,
   onMessage,
   onPeer,
   leave,

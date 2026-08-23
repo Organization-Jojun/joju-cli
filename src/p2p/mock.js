@@ -33,8 +33,13 @@ class MockRoom extends EventEmitter {
     return true
   }
 
+  async flush() {
+    return this.topic !== null
+  }
+
   onMessage(fn) {
-    return this.on('message', fn)
+    this.on('message', fn)
+    return () => this.off('message', fn)
   }
 
   async leave() {
@@ -71,6 +76,11 @@ function send(bytes) {
   return active.send(bytes)
 }
 
+async function flush() {
+  if (active === null) return false
+  return active.flush()
+}
+
 function onMessage(fn) {
   if (active === null) throw new Error('not joined to a topic')
   return active.onMessage(fn)
@@ -78,7 +88,9 @@ function onMessage(fn) {
 
 function on(event, fn) {
   if (active === null) throw new Error('not joined to a topic')
-  return active.on(event, fn)
+  const room = active
+  room.on(event, fn)
+  return () => room.off(event, fn)
 }
 
 async function leave() {
@@ -101,6 +113,7 @@ function getRoom() {
 module.exports = {
   join,
   send,
+  flush,
   onMessage,
   on,
   leave,

@@ -28,12 +28,31 @@ test('fixtures: frozen topic and payload', (t) => {
   t.is(fixtures.EVENT_PEER_CONNECTED, 'peer-connected')
 })
 
+test('p2p: on() and onMessage() return unsubscribe functions', async (t) => {
+  await mock.join(TOPIC_HEX)
+
+  const unsubMsg = mock.onMessage(() => {})
+  const unsubPeer = mock.on('peer-connected', () => {})
+  t.is(typeof unsubMsg, 'function')
+  t.is(typeof unsubPeer, 'function')
+  unsubMsg()
+  unsubPeer()
+  t.ok(await mock.flush())
+
+  await mock.leave()
+})
+
 test('mock: join emits peer-connected and send/onMessage roundtrip', async (t) => {
   const received = []
 
   await mock.join(TOPIC_HEX)
   mock.onMessage((data) => received.push(data.toString()))
-  await new Promise((resolve) => mock.on('peer-connected', resolve))
+  await new Promise((resolve) => {
+    const unsub = mock.on('peer-connected', () => {
+      unsub()
+      resolve()
+    })
+  })
 
   const st = mock.status()
   t.is(st.joined, true)
@@ -55,6 +74,19 @@ test('contracts: join accepts fixture topic and mock peer connects', async (t) =
   const status = swarm.getStatus()
   t.is(status.peers, 1)
   t.is(status.topic, fixtures.TOPIC_HEX)
+})
+
+test('contracts: onPeer and onMessage return unsubscribe functions', async (t) => {
+  await swarm._resetForTests()
+  await swarm.join(fixtures.TOPIC_HEX)
+
+  const unsubPeer = swarm.onPeer(() => {})
+  const unsubMsg = swarm.onMessage(() => {})
+  t.is(typeof unsubPeer, 'function')
+  t.is(typeof unsubMsg, 'function')
+  unsubPeer()
+  unsubMsg()
+  t.ok(await swarm.flush())
 })
 
 test('contracts: paste/yank round-trip against mock adapter', async (t) => {

@@ -67,8 +67,24 @@ class Room extends EventEmitter {
     return true
   }
 
+  async flush() {
+    if (this.swarm === null) return false
+
+    const flushed = await Promise.all(
+      [...this.connections].map(async (conn) => {
+        try {
+          return typeof conn.flush === 'function' ? await conn.flush() : true
+        } catch {
+          return false
+        }
+      })
+    )
+    return flushed.every(Boolean)
+  }
+
   onMessage(fn) {
-    return this.on('message', fn)
+    this.on('message', fn)
+    return () => this.off('message', fn)
   }
 
   async leave() {

@@ -9,7 +9,8 @@ test('p2p: two rooms exchange bytes on fixture topic', async (t) => {
   const roomB = new Room()
   const received = []
 
-  roomB.onMessage((data) => received.push(data.toString()))
+  const unsub = roomB.onMessage((data) => received.push(data.toString()))
+  t.is(typeof unsub, 'function')
 
   await roomA.join(TOPIC_HEX)
   await roomB.join(TOPIC_HEX)
@@ -17,6 +18,7 @@ test('p2p: two rooms exchange bytes on fixture topic', async (t) => {
   await waitFor(() => roomA.status().peers > 0 && roomB.status().peers > 0, 20_000)
 
   roomA.send(Buffer.from(PAYLOAD_UTF8))
+  await roomA.flush()
 
   await waitFor(() => received.length > 0, 10_000)
   t.is(received[0], PAYLOAD_UTF8)
