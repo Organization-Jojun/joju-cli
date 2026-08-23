@@ -4,7 +4,7 @@
 |---|---|
 | **Estado actual** | `Integración A+B cerrada en agent-a/integration` |
 | **Rama** | `agent-a/integration` |
-| **Último commit** | `(pendiente push)` |
+| **Último commit** | `dca3a3f` |
 | **Archivos modificados** | `src/contracts/*` adapter, `src/commands/*` async, `test/index.js` merged, `HANDOFF.md` |
 | **Contratos/interfaces cambiados** | `swarm.js` → delega `p2p`/`mock`. Fixtures = `p2p/fixtures.js`. |
 | **Tests ejecutados** | `npm test` 10/10. CLI smoke join/paste/yank con `JOJUN_USE_MOCK_P2P=1`. |
