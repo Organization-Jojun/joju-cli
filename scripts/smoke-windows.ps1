@@ -18,8 +18,8 @@ Write-Host "npm test"
 npm test
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-Write-Host "npm start"
-npm start
+Write-Host "npm test already ran; skip npm start (TTY session is long-lived)"
+node .\node_modules\bare-runtime\bin\bare bin.mjs --no-updates --help
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
 $env:JOJUN_USE_MOCK_P2P = "1"

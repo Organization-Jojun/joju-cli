@@ -103,11 +103,36 @@ function createCommands({ appName, isDev, getFlags, onBeforeAction }) {
     }
   )
 
-  return { joinCmd, pasteCmd, yankCmd, waitCmd, leaveCmd, keysCmd, ACTIONS }
+  const uiCmd = command(
+    'ui',
+    summary('Interactive session (splash + slash commands)'),
+    description('Long-lived TTY: banner, /help, keybindings. No OTA daemon in this session.'),
+    async () => {}
+  )
+
+  const tuiCmd = command(
+    'tui',
+    summary('Alias of ui'),
+    description('Same as jojun ui.'),
+    async () => {}
+  )
+
+  return {
+    joinCmd,
+    pasteCmd,
+    yankCmd,
+    waitCmd,
+    leaveCmd,
+    keysCmd,
+    uiCmd,
+    tuiCmd,
+    ACTIONS
+  }
 }
 
 function createRootCommand({ appName, descriptionText, subcommands }) {
-  const { joinCmd, pasteCmd, yankCmd, waitCmd, leaveCmd, keysCmd } = subcommands
+  const { joinCmd, pasteCmd, yankCmd, waitCmd, leaveCmd, keysCmd, uiCmd, tuiCmd } =
+    subcommands
 
   return command(
     appName,
@@ -117,14 +142,16 @@ function createRootCommand({ appName, descriptionText, subcommands }) {
     flag('--no-updates', 'disable OTA updates for this run'),
     flag('--update-window <ms>', 'updater wait in milliseconds'),
     flag('--json', 'print status as JSON'),
-    flag('--menu', 'open the numbered action menu'),
+    flag('--menu', 'open the numbered action menu (one-shot)'),
     flag('--updater', 'run updater daemon').hide(),
     joinCmd,
     pasteCmd,
     yankCmd,
     waitCmd,
     leaveCmd,
-    keysCmd
+    keysCmd,
+    uiCmd,
+    tuiCmd
   )
 }
 

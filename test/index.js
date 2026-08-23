@@ -103,3 +103,54 @@ test('contracts: send requires join first', async (t) => {
   await swarm._resetForTests()
   t.exception(() => swarm.send('hello'), /not joined/)
 })
+
+const { parseSlash, suggest, COMMANDS } = require('../src/cli/slash')
+const { humanError } = require('../src/cli/human-error')
+const { renderBanner, BANNER_ART, TAGLINE } = require('../src/cli/banner')
+
+test('slash: empty / suggests every command', (t) => {
+  const parsed = parseSlash('/')
+  t.is(parsed.kind, 'suggest')
+  t.is(parsed.suggestions.length, COMMANDS.length)
+})
+
+test('slash: /help and /join with arg', (t) => {
+  const help = parseSlash('/help')
+  t.is(help.kind, 'command')
+  t.is(help.name, 'help')
+
+  const join = parseSlash('/join 68656c6c6f2d')
+  t.is(join.kind, 'command')
+  t.is(join.name, 'join')
+  t.is(join.arg, '68656c6c6f2d')
+})
+
+test('slash: unknown and prefix suggest', (t) => {
+  const unknown = parseSlash('/nope')
+  t.is(unknown.kind, 'unknown')
+  t.is(unknown.name, 'nope')
+
+  const hits = suggest('wa')
+  t.is(hits.length, 1)
+  t.is(hits[0].name, 'wait')
+})
+
+test('human-error: maps join/timeout/hex to Spanish copy', (t) => {
+  t.ok(/habitación/.test(humanError(new Error('not joined to a topic; run join first'))))
+  t.ok(
+    /Nadie en la habitación/.test(
+      humanError(new Error('timed out waiting for peer after 30000ms'))
+    )
+  )
+  t.ok(/64 caracteres hex/.test(humanError(new Error('topic must be 64 hex characters (32 bytes)'))))
+  t.ok(/blob/.test(humanError(new Error('timed out waiting for blob after 30000ms'))))
+})
+
+test('banner: original pigeon splash names JoJun', (t) => {
+  t.ok(BANNER_ART.includes('JOJUN'))
+  t.ok(/pigeon|carrier/i.test(BANNER_ART))
+  const text = renderBanner({ version: '0.0.1', color: false })
+  t.ok(text.includes(TAGLINE))
+  t.ok(text.includes('0.0.1'))
+  t.ok(text.includes('? help'))
+})

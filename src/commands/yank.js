@@ -13,7 +13,8 @@ async function runYank(opts = {}) {
     blob = await swarm.waitForBlob(opts.timeout || 30_000)
     session.saveBlob(blob)
   }
-  writeStdout(blob)
+  if (opts.toStdout !== false) writeStdout(blob)
+  return blob
 }
 
 module.exports = { runYank }
