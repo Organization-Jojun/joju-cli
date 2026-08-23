@@ -1,48 +1,51 @@
 'use strict'
 
-const { COMMANDS, formatSuggestions } = require('./slash')
+const { t } = require('./i18n')
+const { formatSuggestions, publicCommands } = require('./slash')
 
 function helpPanel() {
+  const cmds = publicCommands().map((c) => ({
+    name: c.names[0],
+    summaryKey: c.summaryKey
+  }))
   return [
-    'Jojun — clipboard P2P (no es un chat con agentes).',
+    t('helpIntro'),
     '',
-    'Flujo de 2 PCs (mismo topic las dos):',
-    '  1. Ambas: j  o  /join   (Enter = topic de prueba)',
-    '  2. Receptor: y  o  /yank   (espera el blob)',
-    '  3. Emisor:   p  o  /paste  (escribí el texto)',
-    '  4. El receptor ve el mismo blob. Sin Discord, USB ni servidor.',
+    t('helpFlowTitle'),
+    t('helpFlow1'),
+    t('helpFlow2'),
+    t('helpFlow3'),
+    t('helpFlow4'),
     '',
-    'Si no hay join: no estás en ninguna habitación. El status dice “sin room”.',
+    t('emptyRoom'),
     '',
-    'Slash commands:',
-    formatSuggestions(COMMANDS),
+    t('helpSlash'),
+    formatSuggestions(cmds),
     '',
-    'One-shot (scripts / daemon):  jojun join <topic>  ·  echo hola | jojun paste  ·  jojun yank'
+    t('advancedTitle'),
+    t('advancedBody')
   ].join('\n')
 }
 
 function keysPanel() {
+  return [t('keysTitle'), '', t('keysBody')].join('\n')
+}
+
+function menuPanel() {
   return [
-    'Atajos (esta sesión — no son secretos)',
+    t('menuTitle'),
+    t('menu1'),
+    t('menu2'),
+    t('menu3'),
+    t('menu4'),
+    t('menu5'),
     '',
-    '  ?           esta ayuda / panel help',
-    '  q  Ctrl+C   salir limpio (leave swarm)',
-    '  j           join — prompt de topic (Enter = fixture)',
-    '  p           paste — una línea',
-    '  y           yank — dump del último blob',
-    '  w           wait — esperar peer',
-    '  l           leave',
-    '  s           status',
-    '  1–5         join paste yank wait leave (menú clásico)',
-    '  /           slash command  ·  Tab sugiere',
-    '',
-    'Fixture topic:',
-    '  68656c6c6f2d6a6f6a756e000000000000000000000000000000000000000000'
+    t('menuHint')
   ].join('\n')
 }
 
 function emptyRoomHint() {
-  return 'Todavía no hay habitación — j o /join (Enter = fixture).'
+  return t('emptyRoom')
 }
 
-module.exports = { helpPanel, keysPanel, emptyRoomHint }
+module.exports = { helpPanel, keysPanel, menuPanel, emptyRoomHint }

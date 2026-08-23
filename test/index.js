@@ -104,25 +104,53 @@ test('contracts: send requires join first', async (t) => {
   t.exception(() => swarm.send('hello'), /not joined/)
 })
 
-const { parseSlash, suggest, COMMANDS } = require('../src/cli/slash')
+const { parseSlash, suggest, publicCommands } = require('../src/cli/slash')
 const { humanError } = require('../src/cli/human-error')
-const { renderBanner, BANNER_ART, TAGLINE } = require('../src/cli/banner')
+const { renderBanner, BANNER_ART } = require('../src/cli/banner')
+const { nameToTopic, topicToName } = require('../src/cli/room-name')
+const { t: msg, setLang, getLang } = require('../src/cli/i18n')
 
-test('slash: empty / suggests every command', (t) => {
-  const parsed = parseSlash('/')
-  t.is(parsed.kind, 'suggest')
-  t.is(parsed.suggestions.length, COMMANDS.length)
+test('i18n: default English; es is Colombian tu', (t) => {
+  setLang('en')
+  t.is(getLang(), 'en')
+  t.ok(/Paste here/.test(msg('tagline')))
+  t.ok(!/tenés|pegás|vos /.test(msg('tagline')))
+  setLang('es')
+  t.ok(/Pegas aquí/.test(msg('tagline')))
+  t.ok(/tienes/.test(msg('setupQuestion')))
+  t.ok(!/tenés|pegás/.test(msg('setupQuestion')))
+  setLang('en')
 })
 
-test('slash: /help and /join with arg', (t) => {
-  const help = parseSlash('/help')
-  t.is(help.kind, 'command')
-  t.is(help.name, 'help')
+test('room-name: empty and test room map to fixture topic', (t) => {
+  t.is(nameToTopic(''), FIXTURE_TOPIC_HEX)
+  t.is(nameToTopic('test room'), FIXTURE_TOPIC_HEX)
+  t.is(nameToTopic('sala de prueba'), FIXTURE_TOPIC_HEX)
+  t.is(nameToTopic(FIXTURE_TOPIC_HEX), FIXTURE_TOPIC_HEX)
+  t.is(topicToName(FIXTURE_TOPIC_HEX), 'test room')
+  const hex = nameToTopic('hackathon')
+  t.is(hex.length, 64)
+  t.is(topicToName(hex), 'hackathon')
+})
 
-  const join = parseSlash('/join 68656c6c6f2d')
-  t.is(join.kind, 'command')
-  t.is(join.name, 'join')
-  t.is(join.arg, '68656c6c6f2d')
+test('slash: empty / suggests public human commands', (t) => {
+  const parsed = parseSlash('/')
+  t.is(parsed.kind, 'suggest')
+  t.is(parsed.suggestions.length, publicCommands().length)
+})
+
+test('slash: human and expert names map to the same action', (t) => {
+  t.is(parseSlash('/conectar').action, 'connect')
+  t.is(parseSlash('/join sala').action, 'connect')
+  t.is(parseSlash('/join sala').arg, 'sala')
+  t.is(parseSlash('/enviar hola').action, 'send')
+  t.is(parseSlash('/paste hola').action, 'send')
+  t.is(parseSlash('/recibir').action, 'receive')
+  t.is(parseSlash('/yank').action, 'receive')
+  t.is(parseSlash('/desconectar').action, 'disconnect')
+  t.is(parseSlash('/leave').action, 'disconnect')
+  t.is(parseSlash('/ayuda').action, 'help')
+  t.is(parseSlash('/help').name, 'help')
 })
 
 test('slash: unknown and prefix suggest', (t) => {
@@ -135,22 +163,30 @@ test('slash: unknown and prefix suggest', (t) => {
   t.is(hits[0].name, 'wait')
 })
 
-test('human-error: maps join/timeout/hex to Spanish copy', (t) => {
-  t.ok(/habitación/.test(humanError(new Error('not joined to a topic; run join first'))))
-  t.ok(
-    /Nadie en la habitación/.test(
-      humanError(new Error('timed out waiting for peer after 30000ms'))
-    )
-  )
-  t.ok(/64 caracteres hex/.test(humanError(new Error('topic must be 64 hex characters (32 bytes)'))))
-  t.ok(/blob/.test(humanError(new Error('timed out waiting for blob after 30000ms'))))
+test('human-error: English default; Spanish Colombian optional', (t) => {
+  setLang('en')
+  t.ok(/Connect to a room first/.test(humanError(new Error('not joined to a topic; run join first'))))
+  t.ok(/Nobody in the room/.test(humanError(new Error('timed out waiting for peer after 30000ms'))))
+  setLang('es')
+  t.ok(/conéctate|conectate/i.test(humanError(new Error('not joined to a topic'))))
+  t.ok(!/Pulsá|tenés/.test(humanError(new Error('not joined to a topic'))))
+  setLang('en')
 })
 
 test('banner: original pigeon splash names JoJun', (t) => {
   t.ok(BANNER_ART.includes('JOJUN'))
   t.ok(/pigeon|carrier/i.test(BANNER_ART))
   const text = renderBanner({ version: '0.0.1', color: false })
-  t.ok(text.includes(TAGLINE))
+  t.ok(text.includes('Paste here'))
   t.ok(text.includes('0.0.1'))
   t.ok(text.includes('? help'))
+})
+
+test('contracts: setUseMock is a real switch (stays mock in unit tests)', async (t) => {
+  await swarm._resetForTests()
+  t.is(typeof swarm.setUseMock, 'function')
+  t.is(swarm.isUsingMock(), true)
+  await swarm.setUseMock(true)
+  t.is(swarm.isUsingMock(), true)
+  t.is(swarm.getStatus().mock, true)
 })

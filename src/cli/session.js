@@ -1,37 +1,48 @@
 'use strict'
 
 const path = require('bare-path')
-const env = require('bare-env')
 const stdio = require('bare-stdio')
 const coreSession = require('../core/session')
 const swarm = require('../contracts')
 const { resolveStorage } = require('../core/updater')
-const { FIXTURE_TOPIC_HEX } = require('../p2p/topic')
 const { isInteractive, readLine, write } = require('../core/readline')
 const { runJoin } = require('../commands/join')
 const { runPaste } = require('../commands/paste')
 const { runYank } = require('../commands/yank')
-const { runWait, DEFAULT_TIMEOUT_MS } = require('../commands/wait')
+const { runWait } = require('../commands/wait')
 const { runLeave } = require('../commands/leave')
 const { renderBanner } = require('./banner')
-const { helpPanel, keysPanel, emptyRoomHint } = require('./help')
+const { helpPanel, keysPanel, menuPanel, emptyRoomHint } = require('./help')
 const { parseSlash, formatSuggestions, suggest } = require('./slash')
 const { humanError } = require('./human-error')
+const { t, setLang, getLang, normalizeLang } = require('./i18n')
+const { nameToTopic, topicToName } = require('./room-name')
+const { loadPrefs, savePrefs } = require('./prefs')
+const { runTutorial } = require('./tutorial')
+
+let prefs = { lang: 'en', timeoutMs: 30_000, mock: null, roomName: '' }
+let storageDir = null
+
+function persist(patch) {
+  prefs = { ...prefs, ...patch }
+  if (storageDir) savePrefs(storageDir, prefs)
+}
 
 function useColor() {
   return !!(stdio.out && stdio.out.isTTY)
 }
 
-function isMock() {
-  return env.JOJUN_USE_MOCK_P2P === '1' || env.JOJUN_USE_MOCK_P2P === 'true'
+function timeoutMs() {
+  return Number(prefs.timeoutMs) > 0 ? Number(prefs.timeoutMs) : 30_000
 }
 
 function formatStatus() {
   const st = swarm.getStatus()
-  const topic = st.topic ? st.topic.slice(0, 8) : '--------'
-  const room = st.joined ? 'joined' : 'sin room'
-  const net = isMock() ? 'mock' : 'live'
-  const line = `  ${room}  ·  topic ${topic}  ·  peers ${st.peers}  ·  ${net}`
+  const name = topicToName(st.topic, prefs.roomName)
+  const room = st.joined ? t('statusJoined') : t('statusIdle')
+  const net = swarm.isUsingMock() ? t('statusMock') : t('statusLive')
+  const label = name && st.joined ? name : '—'
+  const line = `  ${room}  ·  ${label}  ·  peers ${st.peers}  ·  ${net}`
   if (!useColor()) return line
   return `\x1b[36m${line}\x1b[0m`
 }
@@ -51,16 +62,30 @@ function errLine(text) {
 }
 
 function splash(version) {
-  write(renderBanner({ version, color: useColor() }))
+  write(
+    renderBanner({
+      version,
+      color: useColor(),
+      tagline: t('tagline'),
+      hint: t('hint')
+    })
+  )
   log(formatStatus())
   const st = swarm.getStatus()
   if (!st.joined) note(emptyRoomHint())
   log('')
 }
 
+function showMenu() {
+  log('')
+  log(menuPanel())
+  log('')
+}
+
 function clearScreen(version) {
   write('\x1b[2J\x1b[H')
   splash(version)
+  showMenu()
 }
 
 function trySetRaw(enabled) {
@@ -105,71 +130,80 @@ async function promptLine(label) {
 function truncateBlob(buf) {
   const text = buf.toString('utf8')
   if (text.length <= 2000) return text
-  return text.slice(0, 2000) + '\n… (truncado)'
+  return text.slice(0, 2000) + '\n…'
 }
 
 async function safe(fn) {
   try {
-    await fn()
+    return await fn()
   } catch (err) {
     errLine(humanError(err))
+    return null
   }
 }
 
-async function doJoin(arg) {
-  let topic = (arg || '').trim()
-  if (!topic) {
-    topic = await promptLine('Topic (Enter = el de prueba): ')
+async function doConnect(arg, opts = {}) {
+  let name = (arg || '').trim()
+  if (!name && !opts.skipPrompt) {
+    name = await promptLine(t('roomPrompt'))
   }
-  if (!topic) topic = FIXTURE_TOPIC_HEX
-  await safe(async () => {
+  const display = name || prefs.roomName || 'test room'
+  const topic = nameToTopic(name || prefs.roomName || '')
+  persist({ roomName: display })
+  return safe(async () => {
     await runJoin(topic, { json: false })
     log(formatStatus())
+    return display
   })
 }
 
-async function doPaste(arg) {
+async function doSend(arg, opts = {}) {
+  if (!swarm.getStatus().joined && !coreSession.loadTopic()) {
+    errLine(t('connectFirst'))
+    return
+  }
   let text = arg
-  if (text === undefined || text === '') {
-    text = await promptLine('Texto a enviar (Enter vacío cancela): ')
+  if ((text === undefined || text === '') && !opts.skipPrompt) {
+    text = await promptLine(t('sendPrompt'))
     if (!text) {
-      note('Paste cancelado.')
+      note(t('sendCancel'))
       return
     }
   }
+  if (!text) return
   await safe(async () => {
-    note('esperando peer…')
+    note(t('waitingPeer'))
     await runPaste({
       json: false,
-      timeout: 30_000,
-      bytes: Buffer.from(text, 'utf8')
+      timeout: timeoutMs(),
+      bytes: Buffer.from(String(text), 'utf8')
     })
     log(formatStatus())
   })
 }
 
-async function doYank() {
+async function doReceive() {
   await safe(async () => {
-    note('yank…')
-    const blob = await runYank({ timeout: DEFAULT_TIMEOUT_MS, toStdout: false })
+    note(t('waitingMsg'))
+    const blob = await runYank({ timeout: timeoutMs(), toStdout: false })
     if (!blob || blob.length === 0) {
-      note('No hay blob todavía.')
+      note(t('noBlob'))
       return
     }
-    log(`yank ${blob.length} bytes`)
+    log(`${t('received')} ${blob.length} ${t('bytes')}`)
     log(truncateBlob(blob))
   })
 }
 
 async function doWait() {
   await safe(async () => {
-    note('esperando peer…')
-    await runWait(DEFAULT_TIMEOUT_MS, { json: false })
+    note(t('waitingPeer'))
+    await runWait(timeoutMs(), { json: false })
     log(formatStatus())
   })
 }
 
-async function doLeave() {
+async function doDisconnect() {
   await safe(async () => {
     await runLeave({ json: false })
     log(formatStatus())
@@ -179,12 +213,12 @@ async function doLeave() {
 async function doStatus() {
   log(formatStatus())
   const st = swarm.getStatus()
-  if (st.topic) log(`  full topic: ${st.topic}`)
-  else note(emptyRoomHint())
+  if (!st.joined) note(emptyRoomHint())
 }
 
 async function doTopic() {
   const st = swarm.getStatus()
+  log(t('advancedTitle'))
   if (st.topic) log(st.topic)
   else note(emptyRoomHint())
 }
@@ -203,14 +237,117 @@ function showKeys() {
   log('')
 }
 
+function showAdvanced() {
+  log('')
+  log(t('advancedTitle'))
+  log(t('advancedBody'))
+  const st = swarm.getStatus()
+  if (st.topic) log(st.topic)
+  log('')
+}
+
 function showSuggest(prefix) {
   const hits = suggest(prefix || '')
   if (!hits.length) {
-    errLine('No hay comandos que coincidan. /help')
+    errLine(t('noMatch'))
     return
   }
-  log('Comandos:')
+  log(t('commandsHeader'))
   log(formatSuggestions(hits))
+}
+
+async function doLanguage(arg) {
+  const next = normalizeLang(arg)
+  if (!next) {
+    log(t('languageNeed'))
+    log(t('languageNow'))
+    return
+  }
+  setLang(next)
+  persist({ lang: next })
+  log(t('languageSet'))
+  log(t('hint'))
+}
+
+async function doSettings() {
+  log(t('settingsTitle'))
+  log(`  ${t('settingsRoom')}: ${prefs.roomName || 'test room'}`)
+  log(`  ${t('settingsNet')}: ${swarm.isUsingMock() ? t('statusMock') : t('statusLive')}`)
+  log(`  ${t('settingsWait')}: ${Math.round(timeoutMs() / 1000)}`)
+  log(`  ${t('settingsLang')}: ${getLang()}`)
+  const choice = (await promptLine(t('settingsPrompt'))).toLowerCase()
+  if (choice === 'room' || choice === 'sala') {
+    await doConnect('')
+    return
+  }
+  if (choice === 'mock') {
+    await swarm.setUseMock(true)
+    persist({ mock: true })
+    log(formatStatus())
+    return
+  }
+  if (choice === 'live' || choice === 'red') {
+    await swarm.setUseMock(false)
+    persist({ mock: false })
+    log(formatStatus())
+    return
+  }
+  if (choice === 'wait' || choice === 'espera') {
+    const sec = Number(await promptLine(t('settingsWaitPrompt')))
+    if (sec > 0) persist({ timeoutMs: sec * 1000 })
+    return
+  }
+  if (choice === 'language' || choice === 'idioma') {
+    await doLanguage(await promptLine('en / es: '))
+  }
+}
+
+async function runAction(action, arg) {
+  switch (action) {
+    case 'help':
+      showHelp()
+      return null
+    case 'shortcuts':
+      showKeys()
+      return null
+    case 'status':
+      await doStatus()
+      return null
+    case 'connect':
+      await doConnect(arg)
+      return null
+    case 'send':
+      await doSend(arg)
+      return null
+    case 'receive':
+      await doReceive()
+      return null
+    case 'wait':
+      await doWait()
+      return null
+    case 'disconnect':
+      await doDisconnect()
+      return null
+    case 'topic':
+      await doTopic()
+      return null
+    case 'settings':
+      await doSettings()
+      return null
+    case 'language':
+      await doLanguage(arg)
+      return null
+    case 'advanced':
+      showAdvanced()
+      return null
+    case 'clear':
+      return 'clear'
+    case 'quit':
+      return 'quit'
+    default:
+      errLine(t('unknownSlash'))
+      return null
+  }
 }
 
 async function runSlash(line) {
@@ -222,89 +359,60 @@ async function runSlash(line) {
     return true
   }
   if (parsed.kind === 'unknown') {
-    errLine(`No conozco /${parsed.name}. Tab o /help.`)
+    errLine(t('unknownSlash'))
     return true
   }
-
-  switch (parsed.name) {
-    case 'help':
-      showHelp()
-      break
-    case 'keys':
-    case 'shortcuts':
-      showKeys()
-      break
-    case 'status':
-      await doStatus()
-      break
-    case 'join':
-      await doJoin(parsed.arg)
-      break
-    case 'paste':
-      await doPaste(parsed.arg)
-      break
-    case 'yank':
-      await doYank()
-      break
-    case 'wait':
-      await doWait()
-      break
-    case 'leave':
-      await doLeave()
-      break
-    case 'topic':
-      await doTopic()
-      break
-    case 'clear':
-      return 'clear'
-    case 'quit':
-      return 'quit'
-    default:
-      errLine(`No conozco /${parsed.name}. /help`)
-  }
-  return true
+  return runAction(parsed.action, parsed.arg)
 }
 
 async function dispatchIdle(token) {
-  const t = String(token || '').trim().toLowerCase()
-  if (!t) return null
-  if (t === 'q' || t === 'quit') return 'quit'
-  if (t === '?' || t === 'help') {
+  const raw = String(token || '').trim()
+  const tkn = raw.toLowerCase()
+  if (!tkn) return null
+  if (tkn.startsWith('/')) return runSlash(tkn.startsWith('/') ? raw : tkn)
+  if (tkn === 'q' || tkn === 'quit' || tkn === 'salir') return 'quit'
+  if (tkn === '?' || tkn === 'help' || tkn === 'ayuda') {
     showHelp()
     return null
   }
-  if (t.startsWith('/')) return runSlash(t)
-  if (t === 'j' || t === '1' || t === 'join') {
-    await doJoin('')
+  if (tkn === 'c' || tkn === '1' || tkn === 'connect' || tkn === 'conectar' || tkn === 'j' || tkn === 'join') {
+    await doConnect('')
     return null
   }
-  if (t === 'p' || t === '2' || t === 'paste') {
-    await doPaste('')
+  if (tkn === 'e' || tkn === '2' || tkn === 'send' || tkn === 'enviar' || tkn === 'p' || tkn === 'paste') {
+    await doSend('')
     return null
   }
-  if (t === 'y' || t === '3' || t === 'yank') {
-    await doYank()
+  if (tkn === 'r' || tkn === '3' || tkn === 'receive' || tkn === 'recibir' || tkn === 'y' || tkn === 'yank') {
+    await doReceive()
     return null
   }
-  if (t === 'w' || t === '4' || t === 'wait') {
+  if (tkn === 'w' || tkn === '4' || tkn === 'wait' || tkn === 'esperar') {
     await doWait()
     return null
   }
-  if (t === 'l' || t === '5' || t === 'leave') {
-    await doLeave()
+  if (
+    tkn === 'd' ||
+    tkn === '5' ||
+    tkn === 'disconnect' ||
+    tkn === 'desconectar' ||
+    tkn === 'l' ||
+    tkn === 'leave'
+  ) {
+    await doDisconnect()
     return null
   }
-  if (t === 's' || t === 'status') {
+  if (tkn === 's' || tkn === 'status' || tkn === 'estado') {
     await doStatus()
     return null
   }
-  errLine('No entendí. ? o /help · j p y w l · q salir')
+  errLine(t('unknownKey'))
   return null
 }
 
 async function loopLineMode(version) {
   while (true) {
-    write('jojun> ')
+    write(t('prompt'))
     const line = await readLine()
     const result = await dispatchIdle(line)
     if (result === 'quit') return
@@ -314,7 +422,7 @@ async function loopLineMode(version) {
 
 async function loopRawMode(version) {
   trySetRaw(true)
-  write('jojun> ')
+  write(t('prompt'))
   while (true) {
     const chunk = await readRawChunk()
     const b = chunk[0]
@@ -322,12 +430,12 @@ async function loopRawMode(version) {
     if (b === 9) {
       write('\n')
       showSuggest('')
-      write('jojun> ')
+      write(t('prompt'))
       continue
     }
     if (b === 13 || b === 10) {
       write('\n')
-      write('jojun> ')
+      write(t('prompt'))
       continue
     }
     if (b === 127 || b === 8) continue
@@ -341,7 +449,7 @@ async function loopRawMode(version) {
       const result = await runSlash('/' + rest)
       if (result === 'quit') return
       if (result === 'clear') clearScreen(version)
-      write('jojun> ')
+      write(t('prompt'))
       continue
     }
 
@@ -349,13 +457,29 @@ async function loopRawMode(version) {
     const result = await dispatchIdle(ch)
     if (result === 'quit') return
     if (result === 'clear') clearScreen(version)
-    write('jojun> ')
+    write(t('prompt'))
+  }
+}
+
+async function askSetup() {
+  log(t('setupQuestion'))
+  log(t('setupA'))
+  log(t('setupB'))
+  while (true) {
+    const ans = (await promptLine(t('setupPrompt'))).toLowerCase()
+    if (ans === 'a' || ans === '1') return 'ready'
+    if (ans === 'b' || ans === '2') return 'scratch'
   }
 }
 
 async function runSession({ flags, appName, isDev, version }) {
   const dir = resolveStorage(flags, appName, isDev)
-  coreSession.setStorageDir(path.join(dir, 'jojun'))
+  storageDir = path.join(dir, 'jojun')
+  coreSession.setStorageDir(storageDir)
+  prefs = loadPrefs(storageDir)
+  setLang(prefs.lang || 'en')
+  if (prefs.mock === true) await swarm.setUseMock(true)
+  if (prefs.mock === false) await swarm.setUseMock(false)
 
   if (!isInteractive()) {
     const { printStaticHelp } = require('./menu')
@@ -364,6 +488,21 @@ async function runSession({ flags, appName, isDev, version }) {
   }
 
   splash(version)
+
+  const pathChoice = await askSetup()
+  if (pathChoice === 'scratch') {
+    await runTutorial({
+      promptLine,
+      log,
+      note,
+      errLine,
+      connect: doConnect,
+      send: doSend,
+      receive: doReceive,
+      savePrefs: persist
+    })
+  }
+  showMenu()
 
   let raw = false
   try {
@@ -380,11 +519,10 @@ async function runSession({ flags, appName, isDev, version }) {
     trySetRaw(false)
     try {
       await swarm.leave()
-      coreSession.clear()
     } catch {
       // leave is best-effort on quit
     }
-    note('Listo.')
+    note(t('ready'))
   }
 }
 

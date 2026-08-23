@@ -2,19 +2,20 @@
 
 /**
  * Adapter: CLI → `src/p2p` (Hyperswarm) o `src/p2p/mock`.
- * Set `JOJUN_USE_MOCK_P2P=1` para tests/dev sin DHT.
+ * Env `JOJUN_USE_MOCK_P2P=1` elige el default. `setUseMock` cambia en caliente (tutorial).
  */
 const env = require('bare-env')
 const { parseTopic } = require('../p2p/topic')
 const { EVENT_PEER_CONNECTED } = require('./fixtures')
 
-const p2p =
-  env.JOJUN_USE_MOCK_P2P === '1' || env.JOJUN_USE_MOCK_P2P === 'true'
-    ? require('../p2p/mock')
-    : require('../p2p')
-
+let useMock = env.JOJUN_USE_MOCK_P2P === '1' || env.JOJUN_USE_MOCK_P2P === 'true'
+let p2p = loadP2p(useMock)
 let lastBlob = null
 let messageHooked = false
+
+function loadP2p(mock) {
+  return mock ? require('../p2p/mock') : require('../p2p')
+}
 
 function toBuffer(bytes) {
   if (typeof bytes === 'string') return Buffer.from(bytes, 'utf8')
@@ -28,6 +29,19 @@ function hookMessages() {
   p2p.onMessage((data) => {
     lastBlob = Buffer.isBuffer(data) ? data : Buffer.from(data)
   })
+}
+
+async function setUseMock(mock) {
+  const next = !!mock
+  if (next === useMock) return useMock
+  await leave()
+  useMock = next
+  p2p = loadP2p(useMock)
+  return useMock
+}
+
+function isUsingMock() {
+  return useMock
 }
 
 async function join(topicHex) {
@@ -73,7 +87,8 @@ function getStatus() {
   return {
     joined: st.joined,
     topic: st.topic,
-    peers: st.peers
+    peers: st.peers,
+    mock: useMock
   }
 }
 
@@ -122,5 +137,7 @@ module.exports = {
   getStatus,
   getLastBlob,
   waitForBlob,
+  setUseMock,
+  isUsingMock,
   _resetForTests
 }

@@ -97,32 +97,27 @@ Typical flow **two machines, same topic**:
 3. Sender: pipe something into `paste`
 4. Receiver stdout is the blob
 
-### Modo interactivo
+### Interactive mode
 
-In a real terminal:
+Default language is **English** (for judges). Colombian Spanish: `/language es` or `/idioma es` (tú, not vos). Persists in `ui.json`.
+
+First question: already set up, or start from scratch (numbered tutorial). Tutorial can switch practice (this PC only) vs two PCs **without env vars**.
+
+Room names (Enter = test room) map to the fixture topic under the hood. Hex is under `/advanced`.
 
 ```powershell
 node .\node_modules\bare-runtime\bin\bare bin.mjs --no-updates ui
-# or:  $env:JOJUN_USE_MOCK_P2P = "1"
 ```
 
-Splash is a carrier pigeon (the blob is the message; the topic is the route). Status line: topic 8 hex, peers, mock vs live.
-
-| Key | Action |
+| You see | Runs |
 |---|---|
-| `?` | Help (2-PC flow + slash list) |
-| `q` / Ctrl+C | Leave swarm and quit |
-| `j` | Join (Enter = fixture topic) |
-| `p` | Paste one line |
-| `y` | Yank last blob into the log |
-| `w` | Wait for a peer |
-| `l` | Leave |
-| `s` | Status |
-| `1`–`5` | Same as join/paste/yank/wait/leave |
-| `/` | Slash command (`/help`, `/keys`, `/status`, `/join`, `/paste`, `/yank`, `/wait`, `/leave`, `/topic`, `/clear`, `/quit`) |
-| Tab | Suggest slash names |
+| Connect / Conectar (`c`, `/connect`) | `join` |
+| Send message / Enviar (`e`, `/send`) | `paste` |
+| Receive / Recibir (`r`, `/receive`) | `yank` |
+| Wait / Esperar (`w`) | `wait` |
+| Disconnect / Desconectar (`d`) | `leave` |
 
-If raw TTY mode fails, type the same keys or `/commands` and press Enter.
+`?` help · `q` quit · `1`–`5` same as the five actions · `/settings` room, mock/live, wait, language. Expert aliases: `/join` `/paste` `/yank` `/leave`.
 
 ---
 

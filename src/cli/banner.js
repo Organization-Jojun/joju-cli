@@ -10,21 +10,20 @@ const BANNER_ART = [
   ''
 ].join('\n')
 
-const TAGLINE = 'pegás acá, yankéas allá — mismo topic, dos PCs, cero servidor'
-const HINT = '? help   / comandos   q salir   j join   p paste   y yank'
-
-function renderBanner({ version, color } = {}) {
+function renderBanner({ version, color, tagline, hint } = {}) {
   const v = version ? `v${version}` : ''
+  const line = tagline || 'Paste here, receive there — same room, two PCs, no server'
+  const keys = hint || '? help   / commands   q quit   c connect   e send   r receive'
   const dim = (s) => (color ? `\x1b[2m${s}\x1b[0m` : s)
   const bold = (s) => (color ? `\x1b[1m${s}\x1b[0m` : s)
   const lines = [
     BANNER_ART.trimEnd(),
     '',
-    bold(TAGLINE),
-    dim(v ? `${v}  ·  ${HINT}` : HINT),
+    bold(line),
+    dim(v ? `${v}  ·  ${keys}` : keys),
     ''
   ]
   return lines.join('\n')
 }
 
-module.exports = { renderBanner, BANNER_ART, TAGLINE, HINT }
+module.exports = { renderBanner, BANNER_ART }
