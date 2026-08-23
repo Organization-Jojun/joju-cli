@@ -173,13 +173,21 @@ test('human-error: English default; Spanish Colombian optional', (t) => {
   setLang('en')
 })
 
-test('banner: original pigeon splash names JoJun', (t) => {
-  t.ok(BANNER_ART.includes('JOJUN'))
-  t.ok(/pigeon|carrier/i.test(BANNER_ART))
-  const text = renderBanner({ version: '0.0.1', color: false })
+test('banner: pixel pigeon + wordmark and responsive layout', (t) => {
+  t.ok(BANNER_ART.includes('█'))
+  t.ok(BANNER_ART.includes('─'))
+  const { indentFor, wrapLine, renderTruecolor } = require('../src/cli/banner')
+  t.is(indentFor(40, 56), 1)
+  t.ok(indentFor(80, 56) >= 2)
+  t.is(indentFor(200, 56), 8)
+  const color = renderTruecolor()
+  t.ok(color.includes('38;2;'))
+  t.ok(color.includes('█'))
+  const text = renderBanner({ version: '0.0.1', color: false, columns: 80 })
   t.ok(text.includes('Paste here'))
   t.ok(text.includes('0.0.1'))
   t.ok(text.includes('? help'))
+  t.ok(wrapLine('aaaa bbbb cccc dddd eeee', 10).length > 1)
 })
 
 test('contracts: setUseMock is a real switch (stays mock in unit tests)', async (t) => {
@@ -189,4 +197,12 @@ test('contracts: setUseMock is a real switch (stays mock in unit tests)', async 
   await swarm.setUseMock(true)
   t.is(swarm.isUsingMock(), true)
   t.is(swarm.getStatus().mock, true)
+})
+
+const { pathHasDir } = require('../src/core/path-install')
+
+test('path-install: pathHasDir matches Windows dirs', (t) => {
+  t.ok(pathHasDir('C:\\foo;C:\\Users\\me\\AppData\\Local\\Programs\\Jojun', 'C:\\Users\\me\\AppData\\Local\\Programs\\Jojun'))
+  t.ok(pathHasDir('C:\\foo;C:\\Users\\me\\AppData\\Local\\Programs\\Jojun\\', 'C:\\Users\\me\\AppData\\Local\\Programs\\Jojun'))
+  t.ok(!pathHasDir('C:\\foo;C:\\bar', 'C:\\Users\\me\\AppData\\Local\\Programs\\Jojun'))
 })

@@ -6,6 +6,7 @@ import { runMenu, printStaticHelp } from './src/cli/menu.js'
 import { runSession } from './src/cli/session.js'
 import { isInteractive } from './src/core/readline.js'
 import { spawnUpdaterIfEnabled, runUpdaterDaemon } from './src/core/updater.js'
+import { ensureOnPath } from './src/core/path-install.js'
 
 const appName = pkg.productName || pkg.name
 const isDev = path.basename(Bare.argv[0], path.extname(Bare.argv[0])) === 'bare'
@@ -52,6 +53,17 @@ rootCmd = createRootCommand({
 rootCmd.add(flag('--version|-v', 'Print the current version'))
 
 const argv = Bare.argv.slice(isDev ? 2 : 1)
+
+if (!isDev && !argv.includes('--updater')) {
+  try {
+    const pathResult = ensureOnPath()
+    if (pathResult.added) {
+      console.log('Jojun added itself to your PATH. Open a new terminal and type: jojun')
+    }
+  } catch {
+    // PATH registration is best-effort
+  }
+}
 
 rootCmd.parse(argv, { run: false })
 if (rootCmd.flags.help) {

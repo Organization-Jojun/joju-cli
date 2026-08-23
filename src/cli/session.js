@@ -61,18 +61,28 @@ function errLine(text) {
   else log(text)
 }
 
+function termColumns() {
+  const n = stdio.out && stdio.out.columns
+  return Number(n) > 0 ? Number(n) : 80
+}
+
 function splash(version) {
+  const cols = termColumns()
+  const { indentFor } = require('./banner')
   write(
     renderBanner({
       version,
       color: useColor(),
       tagline: t('tagline'),
-      hint: t('hint')
+      hint: t('hint'),
+      columns: cols
     })
   )
-  log(formatStatus())
+  const pad = indentFor(cols, 56)
+  const prefix = ' '.repeat(Math.max(0, pad))
+  log(prefix + formatStatus().trim())
   const st = swarm.getStatus()
-  if (!st.joined) note(emptyRoomHint())
+  if (!st.joined) note(prefix + emptyRoomHint())
   log('')
 }
 
