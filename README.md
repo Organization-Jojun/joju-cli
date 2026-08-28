@@ -138,14 +138,14 @@ DHT test (can flake): `npm run test:p2p`
 
 ---
 
-## Release (maintainers)
+## Release (maintainers / agents)
 
-See [guia-despliegue-cli.md](guia-despliegue-cli.md).
+Full checklist (bump → tag → verify update): **[docs/RELEASE.md](docs/RELEASE.md)**. Short guide: [guia-despliegue-cli.md](guia-despliegue-cli.md).
 
 ```bash
-# bump package.json version, then:
-git tag v0.1.0
-git push origin v0.1.0
+# bump package.json version, merge to main, then:
+git tag -a v0.1.2 -m "v0.1.2 — …"
+git push origin v0.1.2
 # GitHub Actions builds, packs, and publishes the Release
 ```
 

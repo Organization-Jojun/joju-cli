@@ -72,3 +72,7 @@ A binary not in the documented install location is reported but kept; add --bina
 
 Do not open a PR. Do not change product code unless install is broken on this machine.
 ```
+
+---
+
+Maintainers / release agents: see [RELEASE.md](RELEASE.md) for how to ship a new version so `jojun update` keeps working.
