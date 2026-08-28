@@ -171,4 +171,5 @@ scripts/install.sh      Unix installer
 scripts/install.ps1     Windows installer
 scripts/pack-release-asset.js
 docs/AGENT-PROMPT.md    paste into a coding agent to install Jojun
+docs/RELEASE.md         how to ship a new version
 ```

@@ -1,5 +1,5 @@
 {
-  "install": "curl -fsSL https://install.pears.com/pear.sh | sh && export PATH=\"$HOME/.pear/bin:$PATH\" && npm install",
+  "install": "npm install",
   "terminals": [
     {
       "name": "dev",
