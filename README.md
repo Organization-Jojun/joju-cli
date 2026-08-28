@@ -6,48 +6,48 @@
 
 <p align="center"><strong>Paste here. Receive there. Same room. No Discord, USB, or server.</strong></p>
 
-Jojun is a **room clipboard** for two laptops: you **Connect** to a shared name, **Send** a snippet on one PC, **Receive** it on the other. Under the hood that is Hyperswarm `join` / `paste` / `yank`. The binary is a Pear app (`hello-pear-bare` **`variant/daemon`**): install with `pear install pear://…`, keep it current with P2P OTA.
-
-Built for the **[Aleph 2026 Pears Track](https://docs.pears.com/)** (sponsor Tether).
+Jojun is a **room clipboard** for two laptops: you **Connect** to a shared name, **Send** a snippet on one PC, **Receive** it on the other. Under the hood that is Hyperswarm `join` / `paste` / `yank`. Binaries ship via **GitHub Releases** (no Pear seed window).
 
 ---
 
-## Install (this is the product)
+## Install
 
-1. Install the [Pear CLI](https://install.pears.com) if you do not have `pear`.
-2. Someone must be **seeding** the link (Jonatin, Windows, whole judging window).
-3. Install the app:
+### Windows (PowerShell)
 
-```bash
-pear install pear://ta114oog37s3wfdwmp6wz7x4uucjoxckd7t4acxns7s33xbc7oeo
+```powershell
+irm https://raw.githubusercontent.com/Organization-Jojun/joju-cli/main/scripts/install.ps1 | iex
 ```
 
-4. Open a **new** terminal (PATH changes do not apply to windows already open).
-5. Type:
+Binary: `%LOCALAPPDATA%\Programs\Jojun\jojun.exe`. Run it once so Jojun can append that folder to your **user PATH** (it does not use `setx`, which truncates PATH). Open a **new** terminal, then:
 
-```bash
+```powershell
 jojun
 ```
 
-On Windows the binary lands at `%LOCALAPPDATA%\Programs\Jojun\jojun.exe`. Pear v3 should add that folder to your **user PATH**. If `jojun` is still unknown, run that `.exe` once: Jojun **appends its own folder** to the user PATH (it does not use `setx`, which truncates PATH). Then open another terminal.
+### macOS / Linux
 
-On **macOS**, `pear install` puts `jojun` in `~/.local/bin` (same folder as `pear`). The staged file is a small launcher: on first run it extracts the Mach-O, runs `codesign --force --sign -` (Apple Silicon otherwise SIGKILLs a stale ad-hoc signature), then execs it. If `pear` works in that terminal, `jojun` should too after one successful launch. Open a new terminal if PATH was just updated.
+```bash
+curl -fsSL https://raw.githubusercontent.com/Organization-Jojun/joju-cli/main/scripts/install.sh | bash
+```
 
-You should see the pixel **pigeon + JOJUN** splash, then a setup question, then the menu. Interactive sessions **do not** spawn the OTA daemon (so it cannot paint over the TTY). One-shot commands still can.
+Binary: `~/.local/bin/jojun`. Open a new terminal if PATH was just updated. On Apple Silicon the release file is a small launcher that ad-hoc `codesign`s the Mach-O on first run.
 
-OTA errors go to `<storage>/updates.log`, not the terminal.
+### Coding agent
 
-### Install via your coding agent
+Paste [docs/AGENT-PROMPT.md](docs/AGENT-PROMPT.md) into Cursor / Claude. Agree a **room name** first.
 
-Send someone [docs/AGENT-PROMPT.md](docs/AGENT-PROMPT.md) (or paste the fenced prompt in that file into Cursor / Claude). The agent installs Pear, puts `jojun` on the machine, and tells them Connect / Send / Receive. Agree a **room name** first (same spelling on both PCs). On **Windows**, `pear install` is enough while this link is seeded. On **Mac/Linux**, the agent builds the native binary from `main` (the seeded release is Windows x64).
+### Update
+
+```bash
+jojun update --check
+jojun update
+```
 
 ---
 
 ## Use it (interactive)
 
-Default language is **English**. Colombian Spanish: `/language es` or `/idioma es` (`tú`, not vos). Stored in `ui.json`.
-
-First prompt: already set up, or start from scratch (6-step tutorial). Tutorial picks **this PC only** (practice) vs **two PCs** without asking you for env vars. Room **names** (Enter = test room); hex is Advanced only.
+Default language is **English**. Colombian Spanish: `/language es` or `/idioma es`. Stored in `ui.json`.
 
 | You see | Key | Slash | Technical |
 |---|---|---|---|
@@ -57,17 +57,13 @@ First prompt: already set up, or start from scratch (6-step tutorial). Tutorial 
 | Wait for the other | `w` / `4` | `/wait` `/esperar` | `wait` |
 | Disconnect | `d` / `5` | `/disconnect` `/desconectar` | `leave` |
 
-`?` help · `q` / Ctrl+C quit (leaves the swarm) · `/settings` room, practice/network, wait, language · `/advanced` topic hex and script commands. Expert aliases: `/join` `/paste` `/yank` `/leave`.
+`?` help · `q` / Ctrl+C quit · `/settings` · `/advanced`.
 
-Two PCs: both **Connect** to the **same room name**, then the sender picks **Send message**. Messages **appear on their own** on the other PC — the receiver does not have to press anything. `r` / **Receive** replays the last message you already got; **Wait** (`w`) is what blocks for the other PC. Turn the automatic display off in `/settings` → `auto` if you would rather pull with `r`.
-
-One message is one write on the wire, with no length prefix, so keep pastes to a snippet. Something large enough to be split by the transport arrives as several separate messages.
+Two PCs: both **Connect** to the **same room name**, then **Send**. Messages can appear automatically on the other PC. Keep pastes to a snippet (one write on the wire).
 
 ---
 
 ## Scripts (one-shot)
-
-Each of these does work and **exits** (Pear `variant/daemon` shape):
 
 | Command | What it does |
 |---|---|
@@ -77,26 +73,18 @@ Each of these does work and **exits** (Pear `variant/daemon` shape):
 | `jojun wait` | Block until a peer |
 | `jojun leave` | Leave and clear local session |
 | `jojun keys` | Print: join paste yank wait leave |
-| `jojun --menu` | Numbered 1–5 menu, then exit |
+| `jojun update` | Install latest GitHub Release for this OS |
 | `jojun uninstall` | Remove Jojun from this machine (asks first) |
+| `jojun --menu` | Numbered 1–5 menu, then exit |
 
 Flags: `--no-updates` · `--storage <dir>` · `--json` · `--timeout` / `-t` · `--help` · `--version`.
-Root flags go **before** the subcommand: `jojun --json uninstall`.
-
-### Removing Jojun
-
-Always look before you delete:
 
 ```bash
-jojun uninstall --dry-run   # report the plan, delete nothing
-jojun uninstall             # same report, then asks y/N
+jojun uninstall --dry-run
+jojun uninstall
 ```
 
-It removes the storage directory (`session.json`, `last.blob`, `ui.json`, `updates.log`) and, on Windows, the user PATH entry Jojun added — every other PATH entry is preserved. A `jojun` binary Jojun did not place (the copy `docs/AGENT-PROMPT.md` suggests putting on your PATH by hand) is **reported but kept**; add `--binaries` to remove those too. `--yes` skips the prompt for scripts.
-
-It never touches the Pear runtime or Pear's own app entry. On Windows a running `jojun.exe` cannot delete itself, so it is reported for manual removal after everything else is gone.
-
-Test room hex (same as Enter in the UI):
+Test room hex (Enter in the UI):
 
 ```
 68656c6c6f2d6a6f6a756e000000000000000000000000000000000000000000
@@ -104,18 +92,12 @@ Test room hex (same as Enter in the UI):
 
 ---
 
-## Why it exists
-
-Hackathon laptops need a small blob moved without chat apps or USB. If the other peer is offline, the stream is gone (no Hypercore). **`pear install` + OTA landing is the hard requirement** of the track.
-
----
-
 ## Team
 
 | Person | Role |
 |---|---|
-| **Jonatin** ([Jonathanrbt](https://github.com/Jonathanrbt)) | Product, CLI, Windows binary, seed during judging |
-| **Julián (Julidev)** | Hyperswarm layer, Pear `stage` / `seed`, OTA daemon shape |
+| **Jonatin** ([Jonathanrbt](https://github.com/Jonathanrbt)) | Product, CLI, Windows binary |
+| **Julián (Julidev)** | Hyperswarm layer, packaging |
 
 Repo: [Organization-Jojun/joju-cli](https://github.com/Organization-Jojun/joju-cli) (Apache-2.0).
 
@@ -123,19 +105,15 @@ Repo: [Organization-Jojun/joju-cli](https://github.com/Organization-Jojun/joju-c
 
 ## Stack
 
-Runtime is **Bare + Pear**, not Node.js.
-
 | Piece | What we use |
 |---|---|
-| Template | [`hello-pear-bare`](https://github.com/holepunchto/hello-pear-bare) **`variant/daemon`** |
+| Runtime | [Bare](https://docs.pears.com/) (`bare-build` standalone binary) |
 | Parser | [`paparam`](https://github.com/holepunchto/paparam) |
 | Product P2P | [Hyperswarm](https://docs.pears.com/how-to/connect-to-peers/) topic |
-| OTA | `pear-runtime` · `package.json` `upgrade` |
-| Banner | Pixel grid from [`docs/banner-cli`](docs/banner-cli) (truecolor; mono fallback) |
+| Distribute | GitHub Releases + `scripts/install.sh` / `install.ps1` |
+| Self-update | `jojun update` (GitHub Releases API + SHA-256) |
+| Banner | Pixel grid from [`docs/banner-cli`](docs/banner-cli) |
 | Tests | `brittle` via `bare-runtime` |
-| Binary | `bare-build` → `out/<platform>-<arch>/jojun` |
-
-Out of MVP: Herdr, Hypercore, Hyperdrive, BLE-Swarm, Ink/React.
 
 ---
 
@@ -146,76 +124,51 @@ git clone https://github.com/Organization-Jojun/joju-cli.git
 cd joju-cli
 npm install
 npm test
-npm start          # TTY session, updates off (not the PATH binary)
+npm start          # TTY session, updates off
 ```
 
 ```powershell
 node .\node_modules\bare-runtime\bin\bare bin.mjs --no-updates
 ```
 
-That is **dev**. The installed product is `jojun` on PATH after `pear install` or after copying `out\win32-x64\jojun.exe` to `%LOCALAPPDATA%\Programs\Jojun\`.
-
-One-shot mock (no DHT):
-
-```powershell
-$env:JOJUN_USE_MOCK_P2P = "1"
-$storage = "$env:TEMP\jojun-dev"
-$topic = "68656c6c6f2d6a6f6a756e000000000000000000000000000000000000000000"
-$bare = ".\node_modules\bare-runtime\bin\bare"
-
-node $bare bin.mjs --no-updates --storage $storage join $topic
-"hello jojun" | node $bare bin.mjs --no-updates --storage $storage paste
-node $bare bin.mjs --no-updates --storage $storage yank
-```
-
-Interactive practice mode does the same without env vars (`/settings` → mock). Two real PCs: do **not** use mock; same room name; different `--storage` if you run two one-shots on one disk.
+Local binary: `npm run make` → `out/<platform>-<arch>/jojun[.exe]`.
 
 Smoke: `powershell -File scripts\smoke-windows.ps1`  
 DHT test (can flake): `npm run test:p2p`
 
-### Local `.exe`
-
-```bash
-npm run make
-```
-
-Windows x64: `out/win32-x64/jojun.exe`. First run can register PATH. Rebuild + copy to `Programs\Jojun` when you want PATH `jojun` to match the repo.
-
 ---
 
-## Release (maintainers)
+## Release (maintainers / agents)
 
-Do **not** `pear stage` the git checkout. Do **not** pass a folder named `Jojun` to `pear build --win32-x64-app`: that nests the binary at `by-arch/win32-x64/app/Jojun/jojun.exe`, and `pear install` looks for `by-arch/win32-x64/app/jojun.exe` (`package.json` `name` + `bin`).
+Full checklist (bump → tag → verify update): **[docs/RELEASE.md](docs/RELEASE.md)**. Short guide: [guia-despliegue-cli.md](guia-despliegue-cli.md).
 
 ```bash
-npm run make
-npm run package-release   # writes release-bundle/by-arch/win32-x64/app/jojun.exe
-npm run stage             # pear stage the bundle, not the repo
-npm run seed              # leave running (or keep the EC2 seeder up)
+# bump package.json version, merge to main, then:
+git tag -a v0.1.2 -m "v0.1.2 — …"
+git push origin v0.1.2
+# GitHub Actions builds, packs, and publishes the Release
 ```
 
-Upgrade link (do not regenerate):
+Local pack (after `npm run make` on each host you have):
 
-`pear://ta114oog37s3wfdwmp6wz7x4uucjoxckd7t4acxns7s33xbc7oeo`
-
-Windows Pear CLI: `%LOCALAPPDATA%\Programs\pear\pear.exe`
+```bash
+npm run pack-release   # → dist-release/
+```
 
 ---
 
 ## Layout
 
 ```
-bin.mjs                 entry (session vs one-shot vs updater)
-app.js                  Pear updater daemon
+bin.mjs                 entry (session vs one-shot)
 src/cli/                splash, i18n, slash, tutorial, session
-src/cli/banner-cells.js pixel art for the splash
-src/commands/           join paste yank wait leave
-src/core/               session files, PATH helper, updater
+src/commands/           join paste yank wait leave uninstall update
+src/core/               session files, PATH helper, update glue
 src/contracts/          CLI ↔ P2P (setUseMock)
 src/p2p/                Hyperswarm + mock
-src/deploy/             pear stage/seed wrappers
-docs/banner-cli/        pixel splash (SVG for README + ansi / txt / go)
+src/update/             GitHub Releases client, checksums, install targets
+scripts/install.sh      Unix installer
+scripts/install.ps1     Windows installer
+scripts/pack-release-asset.js
 docs/AGENT-PROMPT.md    paste into a coding agent to install Jojun
 ```
-
-Install-via-agent prompt: [`docs/AGENT-PROMPT.md`](docs/AGENT-PROMPT.md)

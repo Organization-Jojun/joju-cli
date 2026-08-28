@@ -2,23 +2,11 @@
 $ErrorActionPreference = "Stop"
 Set-Location (Join-Path $PSScriptRoot "..")
 
-$pear = Join-Path $env:LOCALAPPDATA "Programs\pear\pear.exe"
-if (Test-Path $pear) {
-  $pearDir = Split-Path $pear
-  if ($env:PATH -notlike "*$pearDir*") {
-    $env:PATH = "$pearDir;$env:PATH"
-  }
-  $env:PEAR_BIN = $pear
-  Write-Host "Pear: $pear"
-} else {
-  Write-Host "Pear CLI no encontrada en $pear — instala con: irm https://install.pears.com/pear.ps1 | iex"
-}
-
 Write-Host "npm test"
 npm test
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-Write-Host "npm test already ran; skip npm start (TTY session is long-lived)"
+Write-Host "CLI help"
 node .\node_modules\bare-runtime\bin\bare bin.mjs --no-updates --help
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
@@ -32,5 +20,13 @@ Write-Host "mock join/paste/yank"
 node $bare bin.mjs --no-updates --storage $storage join $topic
 "hello jojun" | node $bare bin.mjs --no-updates --storage $storage paste
 node $bare bin.mjs --no-updates --storage $storage yank
+
+$exe = Join-Path $PWD "out\win32-x64\jojun.exe"
+if (Test-Path $exe) {
+  Write-Host "standalone --version"
+  & $exe --no-updates --version
+  if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+}
+
 Write-Host ""
-Write-Host "OK — mock smoke. Para P2P real: dos ventanas, ver README."
+Write-Host "OK — mock smoke. Install: irm .../scripts/install.ps1 | iex"

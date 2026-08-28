@@ -2,10 +2,8 @@
 
 /**
  * Apple Silicon SIGKILLs a Mach-O whose ad-hoc signature does not match
- * the bytes (pear stage from Windows often leaves a stale LC_CODE_SIGNATURE).
- * pear-install only copies one file (~/.local/bin/jojun). That file must be a
- * *shell script* so it can start, then extract + `codesign --force --sign -`
- * the real binary and exec it.
+ * the bytes. Release assets for darwin are a *shell script* launcher that
+ * extracts + `codesign --force --sign -` the real binary on first run, then execs it.
  */
 function wrapDarwinBin(macho) {
   if (!Buffer.isBuffer(macho) || macho.length < 4) {

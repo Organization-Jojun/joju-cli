@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 'use strict'
 
-/** Ad-hoc sign the darwin binaries. Only works on macOS. Must run before pear stage. */
+/** Ad-hoc sign the darwin binaries. Only works on macOS. */
 const { spawnSync } = require('child_process')
 const fs = require('fs')
 const path = require('path')

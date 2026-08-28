@@ -8,6 +8,7 @@ const mock = require('../src/p2p/mock')
 const swarm = require('../src/contracts')
 const fixtures = require('../src/contracts/fixtures')
 const { runLeave } = require('../src/commands/leave')
+require('./update-release.js')
 
 test('topic: parses 64-char hex to 32 bytes', (t) => {
   const buf = parseTopic(FIXTURE_TOPIC_HEX)
@@ -234,8 +235,13 @@ test('contracts: setUseMock is a real switch (stays mock in unit tests)', async 
 })
 
 const { pathHasDir } = require('../src/core/path-install')
+const { isWindows } = require('which-runtime')
 
 test('path-install: pathHasDir matches Windows dirs', (t) => {
+  if (!isWindows) {
+    t.pass('semicolon PATH is Windows-only')
+    return
+  }
   t.ok(
     pathHasDir(
       'C:\\foo;C:\\Users\\me\\AppData\\Local\\Programs\\Jojun',
@@ -254,7 +260,6 @@ test('path-install: pathHasDir matches Windows dirs', (t) => {
 const fsTest = require('bare-fs')
 const osTest = require('bare-os')
 const pathTest = require('bare-path')
-const { isWindows } = require('which-runtime')
 const { removeFromPathValue } = require('../src/core/path-install')
 const uninstall = require('../src/commands/uninstall')
 
@@ -685,25 +690,24 @@ test('prefs: autoReceive defaults on and survives an older ui.json', (t) => {
   fsTest.rmSync(dir, { recursive: true, force: true })
 })
 
-test('pear-install: Windows client looks for name.exe not Jojun/name.exe', (t) => {
-  const pkg = require('../package.json')
-  t.is(typeof pkg.bin, 'string')
-  const host = 'win32-x64'
-  const required = '/by-arch/' + host + '/app/' + pkg.name + '.exe'
-  t.is(required, '/by-arch/win32-x64/app/jojun.exe')
-  t.ok(!required.includes('/Jojun/jojun.exe'))
+test('release-install: Windows target is Programs/Jojun/jojun.exe', (t) => {
+  const { documentedBinaryPath } = require('../src/update/install-target')
+  const { assetFileName } = require('../src/update/assets')
+  t.is(assetFileName('0.1.0', 'win32', 'x64'), 'jojun_0.1.0_win32-x64.zip')
+  if (require('bare-os').platform() === 'win32') {
+    t.ok(/jojun\.exe$/i.test(documentedBinaryPath('win32')))
+  } else {
+    t.pass('skip win path off-windows')
+  }
 })
 
-test('pear-install: macOS client looks for ~/.local/bin/jojun (bin name, no .app)', (t) => {
-  const pkg = require('../package.json')
-  const home = '/Users/judge'
-  const dest = home + '/.local/bin/' + pkg.name
-  t.is(dest, '/Users/judge/.local/bin/jojun')
-  const required = '/by-arch/darwin-arm64/app/' + pkg.name
-  t.is(required, '/by-arch/darwin-arm64/app/jojun')
+test('release-install: macOS/Linux target is ~/.local/bin/jojun', (t) => {
+  const { documentedBinaryPath } = require('../src/update/install-target')
+  t.ok(documentedBinaryPath('darwin').replace(/\\/g, '/').endsWith('/.local/bin/jojun'))
+  t.ok(documentedBinaryPath('linux').replace(/\\/g, '/').endsWith('/.local/bin/jojun'))
 })
 
-test('path-install: unix PATH export matches pear-install rc snippet', (t) => {
+test('path-install: unix PATH export for ~/.local/bin', (t) => {
   const { unixExportLine, unixShellConfig } = require('../src/core/path-install')
   t.is(unixShellConfig('/bin/zsh').rel, '.zshrc')
   t.is(unixShellConfig('/bin/zsh').isFish, false)
