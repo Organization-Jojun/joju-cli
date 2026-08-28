@@ -92,17 +92,6 @@ Test room hex (Enter in the UI):
 
 ---
 
-## Team
-
-| Person | Role |
-|---|---|
-| **Jonatin** ([Jonathanrbt](https://github.com/Jonathanrbt)) | Product, CLI, Windows binary |
-| **Julián (Julidev)** | Hyperswarm layer, packaging |
-
-Repo: [Organization-Jojun/joju-cli](https://github.com/Organization-Jojun/joju-cli) (Apache-2.0).
-
----
-
 ## Stack
 
 | Piece | What we use |
