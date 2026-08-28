@@ -9,7 +9,7 @@ Jojun **no** usa GoReleaser ni Pear. El binario sale de `bare-build`; el canal e
 1. Bump `version` en `package.json` → merge a `main`.
 2. `git tag -a vX.Y.Z -m "…" && git push origin vX.Y.Z`
 3. Actions publica assets + `checksums.txt`.
-4. Usuarios: `install.sh` / `install.ps1` o `jojun update`.
+4. Usuarios: `install.sh` / `install.ps1` (en Windows preferir descargar el `.ps1` a disco y `-File`, no solo `irm|iex`) o `jojun update`.
 
 ## Destinos (no cambiar)
 

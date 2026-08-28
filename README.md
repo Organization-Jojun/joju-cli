@@ -18,7 +18,16 @@ Jojun is a **room clipboard** for two laptops: you **Connect** to a shared name,
 irm https://raw.githubusercontent.com/Organization-Jojun/joju-cli/main/scripts/install.ps1 | iex
 ```
 
-Binary: `%LOCALAPPDATA%\Programs\Jojun\jojun.exe`. Run it once so Jojun can append that folder to your **user PATH** (it does not use `setx`, which truncates PATH). Open a **new** terminal, then:
+If that fails on an older PowerShell, use the file form (more reliable on Windows PowerShell 5.1):
+
+```powershell
+[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+$i = "$env:TEMP\jojun-install.ps1"
+Invoke-WebRequest -Uri https://raw.githubusercontent.com/Organization-Jojun/joju-cli/main/scripts/install.ps1 -OutFile $i -UseBasicParsing
+powershell -NoProfile -ExecutionPolicy Bypass -File $i
+```
+
+Binary: `%LOCALAPPDATA%\Programs\Jojun\jojun.exe`. The installer adds that folder to your **user PATH** (never `setx`). Open a **new** terminal, then:
 
 ```powershell
 jojun

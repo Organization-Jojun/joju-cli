@@ -92,5 +92,12 @@ else
 fi
 
 echo "Installed ${DEST} (v${VER})"
-echo "If 'jojun' is not found, open a new terminal (or ensure ${DEST_DIR} is on PATH)."
+case ":${PATH}:" in
+  *":${DEST_DIR}:"*) ;;
+  *)
+    # best-effort for this shell; persistent PATH is usually already set for ~/.local/bin
+    export PATH="${DEST_DIR}:${PATH}"
+    ;;
+esac
+echo "Open a new terminal if needed, then type: jojun"
 echo "First run on macOS may codesign the binary (Apple Silicon)."

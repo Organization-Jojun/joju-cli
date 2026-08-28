@@ -28,9 +28,13 @@ Print: OS, arch (arm64 vs x64), whether `jojun` is already on PATH.
 ## 2. Install from GitHub Releases
 
 ### Windows (PowerShell)
-  irm https://raw.githubusercontent.com/Organization-Jojun/joju-cli/main/scripts/install.ps1 | iex
-  Binary: %LOCALAPPDATA%\Programs\Jojun\jojun.exe
-  Run that exe once so it can append its folder to user PATH (never uses setx). Open a NEW terminal.
+  Prefer:
+    [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+    $i="$env:TEMP\jojun-install.ps1"
+    Invoke-WebRequest -Uri https://raw.githubusercontent.com/Organization-Jojun/joju-cli/main/scripts/install.ps1 -OutFile $i -UseBasicParsing
+    powershell -NoProfile -ExecutionPolicy Bypass -File $i
+  Or: irm https://raw.githubusercontent.com/Organization-Jojun/joju-cli/main/scripts/install.ps1 | iex
+  Binary: %LOCALAPPDATA%\Programs\Jojun\jojun.exe (installer adds user PATH; never setx). NEW terminal, then `jojun`.
 
 ### macOS / Linux
   curl -fsSL https://raw.githubusercontent.com/Organization-Jojun/joju-cli/main/scripts/install.sh | bash

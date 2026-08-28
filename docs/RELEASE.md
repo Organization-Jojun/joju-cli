@@ -94,8 +94,11 @@ curl -fsSL https://raw.githubusercontent.com/Organization-Jojun/joju-cli/main/sc
 ```
 
 ```powershell
-# Windows
-irm https://raw.githubusercontent.com/Organization-Jojun/joju-cli/main/scripts/install.ps1 | iex
+# Windows (file form — most reliable on Windows PowerShell 5.1)
+[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+$i = "$env:TEMP\jojun-install.ps1"
+Invoke-WebRequest -Uri https://raw.githubusercontent.com/Organization-Jojun/joju-cli/main/scripts/install.ps1 -OutFile $i -UseBasicParsing
+powershell -NoProfile -ExecutionPolicy Bypass -File $i
 ```
 
 Override de versión: `JOJUN_VERSION=0.2.0` (con o sin `v`).
