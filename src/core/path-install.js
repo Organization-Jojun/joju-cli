@@ -217,6 +217,94 @@ function removeWindowsUserPath(dir) {
   return { removed: true }
 }
 
+/**
+ * Pure: drop every line whose trimmed text equals the export Jojun would write
+ * for `dir`. Leaves unrelated PATH customizations alone.
+ */
+function stripUnixPathExport(content, dir, isFish) {
+  const marker = unixExportLine(dir, isFish).trim()
+  if (!marker) return { content: String(content || ''), removed: false }
+
+  const raw = String(content || '')
+  const endsWithNewline = raw.endsWith('\n')
+  const lines = raw.split(/\r?\n/)
+  // trailing empty from final newline is not a real line to keep counting
+  const hadTrailingEmpty = endsWithNewline && lines.length > 0 && lines[lines.length - 1] === ''
+  const body = hadTrailingEmpty ? lines.slice(0, -1) : lines
+  const kept = body.filter((line) => line.trim() !== marker)
+
+  if (kept.length === body.length) return { content: raw, removed: false }
+
+  let next = kept.join('\n')
+  if (endsWithNewline || next.length > 0) next = next.endsWith('\n') ? next : next + '\n'
+  return { content: next, removed: true }
+}
+
+function unixRcHasPathExport(content, dir, isFish) {
+  const marker = unixExportLine(dir, isFish).trim()
+  if (!marker) return false
+  return String(content || '')
+    .split(/\r?\n/)
+    .some((line) => line.trim() === marker)
+}
+
+/**
+ * Remove the exact PATH export line Jojun appended to the user's shell rc.
+ * Only touches lines matching unixExportLine(dir); never deletes other PATH edits.
+ */
+function removeUnixShellRcPath(dir, opts = {}) {
+  let fs
+  try {
+    fs = require('bare-fs')
+  } catch {
+    return { removed: false, reason: 'no-fs' }
+  }
+
+  const home = opts.home || os.homedir()
+  if (!home) return { removed: false, reason: 'no-home' }
+
+  const { isFish, rel } = unixShellConfig(opts.shellPath || env.SHELL)
+  const configFile = opts.configFile || path.join(home, rel)
+
+  let content = ''
+  try {
+    content = fs.readFileSync(configFile, 'utf8')
+  } catch {
+    return { removed: false, reason: 'not-present', configFile }
+  }
+
+  const next = stripUnixPathExport(content, dir, isFish)
+  if (!next.removed) return { removed: false, reason: 'not-present', configFile }
+
+  try {
+    fs.writeFileSync(configFile, next.content)
+  } catch (err) {
+    return { removed: false, reason: 'write', detail: String(err && err.message), configFile }
+  }
+
+  return { removed: true, configFile }
+}
+
+function readUnixShellRc(opts = {}) {
+  let fs
+  try {
+    fs = require('bare-fs')
+  } catch {
+    return { content: '', configFile: null, isFish: false }
+  }
+
+  const home = opts.home || os.homedir()
+  const { isFish, rel } = unixShellConfig(opts.shellPath || env.SHELL)
+  const configFile = opts.configFile || (home ? path.join(home, rel) : null)
+  if (!configFile) return { content: '', configFile: null, isFish }
+
+  try {
+    return { content: fs.readFileSync(configFile, 'utf8'), configFile, isFish }
+  } catch {
+    return { content: '', configFile, isFish }
+  }
+}
+
 module.exports = {
   ensureOnPath,
   pathHasDir,
@@ -224,6 +312,10 @@ module.exports = {
   normalizeDir,
   removeFromPathValue,
   removeWindowsUserPath,
+  removeUnixShellRcPath,
+  stripUnixPathExport,
+  unixRcHasPathExport,
+  readUnixShellRc,
   unixExportLine,
   unixShellConfig
 }

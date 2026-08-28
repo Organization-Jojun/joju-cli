@@ -59,7 +59,9 @@ Default language is **English**. Colombian Spanish: `/language es` or `/idioma e
 
 `?` help · `q` / Ctrl+C quit · `/settings` · `/advanced`.
 
-Two PCs: both **Connect** to the **same room name**, then **Send**. Messages can appear automatically on the other PC. Keep pastes to a snippet (one write on the wire).
+Two PCs: both **Connect** to the **exact same room name** (case-sensitive), then **Send**. Room names are hashed with SHA-256 before joining Hyperswarm — the DHT topic is not the readable name. Short or common names are still weak: anyone who guesses the name can join. If you ever pasted secrets into a short/common room (including the old public defaults), treat them as compromised and rotate.
+
+Messages can appear automatically on the other PC. Keep pastes to a snippet (one write on the wire).
 
 ---
 
@@ -67,7 +69,7 @@ Two PCs: both **Connect** to the **same room name**, then **Send**. Messages can
 
 | Command | What it does |
 |---|---|
-| `jojun join <topic>` | Join a 64-hex Hyperswarm topic |
+| `jojun join <name\|hex>` | Join by room name (hashed) or 64-hex topic |
 | `echo hello \| jojun paste` | Send stdin (waits for a peer) |
 | `jojun yank` | Last blob to **stdout** |
 | `jojun wait` | Block until a peer |
@@ -84,12 +86,9 @@ jojun uninstall --dry-run
 jojun uninstall
 ```
 
-Test room hex (Enter in the UI):
+If `jojun uninstall` prints `UNKNOWN_ARG: uninstall`, you are on a pre-0.1 binary. Reinstall with `install.ps1` / `install.sh`, then run uninstall again. On macOS/Linux, uninstall also removes the PATH line Jojun may have appended to your shell rc (`.zshrc`, etc.).
 
-```
-68656c6c6f2d6a6f6a756e000000000000000000000000000000000000000000
-```
-
+**v0.2.0+** changes how room names become topics (SHA-256). Clients on 0.1.x and 0.2.x with the “same” name will **not** meet each other — both sides must upgrade.
 ---
 
 ## Stack
@@ -133,8 +132,8 @@ Full checklist (bump → tag → verify update): **[docs/RELEASE.md](docs/RELEAS
 
 ```bash
 # bump package.json version, merge to main, then:
-git tag -a v0.1.2 -m "v0.1.2 — …"
-git push origin v0.1.2
+git tag -a v0.2.0 -m "v0.2.0 — …"
+git push origin v0.2.0
 # GitHub Actions builds, packs, and publishes the Release
 ```
 

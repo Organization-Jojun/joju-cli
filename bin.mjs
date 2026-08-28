@@ -67,7 +67,7 @@ rootCmd.add(flag('--version|-v', 'Print the current version'))
 
 const argv = Bare.argv.slice(isDev ? 2 : 1)
 
-if (!isDev && !argv.includes('--updater')) {
+if (!isDev && !argv.includes('--updater') && !argv.includes('uninstall') && !argv.includes('update')) {
   try {
     const pathResult = ensureOnPath()
     if (pathResult.added) {

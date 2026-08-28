@@ -209,16 +209,26 @@ async function safe(fn) {
 async function doConnect(arg, opts = {}) {
   let name = (arg || '').trim()
   if (!name && !opts.skipPrompt) {
-    name = await promptLine(t('roomPrompt'))
+    name = (await promptLine(t('roomPrompt'))).trim()
   }
-  const display = name || prefs.roomName || 'test room'
-  const topic = nameToTopic(name || prefs.roomName || '')
-  persist({ roomName: display })
+  if (!name) name = (prefs.roomName || '').trim()
+  if (!name) {
+    errLine(t('errRoomName'))
+    return null
+  }
+  let topic
+  try {
+    topic = nameToTopic(name)
+  } catch (err) {
+    errLine(humanError(err))
+    return null
+  }
+  persist({ roomName: name })
   return safe(async () => {
     await runJoin(topic, { json: false })
     subscribeIncoming()
     log(formatStatus())
-    return display
+    return name
   })
 }
 
@@ -350,7 +360,7 @@ async function doLanguage(arg) {
 
 async function doSettings() {
   log(t('settingsTitle'))
-  log(`  ${t('settingsRoom')}: ${prefs.roomName || 'test room'}`)
+  log(`  ${t('settingsRoom')}: ${prefs.roomName || '—'}`)
   log(`  ${t('settingsNet')}: ${swarm.isUsingMock() ? t('statusMock') : t('statusLive')}`)
   log(`  ${t('settingsWait')}: ${Math.round(timeoutMs() / 1000)}`)
   log(`  ${t('settingsLang')}: ${getLang()}`)

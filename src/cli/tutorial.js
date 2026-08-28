@@ -18,8 +18,12 @@ async function runTutorial({ promptLine, log, note, errLine, connect, send, rece
   await promptLine(t('tutContinue'))
 
   log(t('tut2'))
-  const room = await promptLine(t('tut2prompt'))
-  savePrefs({ roomName: room || 'test room' })
+  let room = ''
+  while (!room) {
+    room = (await promptLine(t('tut2prompt'))).trim()
+    if (!room) errLine(t('errRoomName'))
+  }
+  savePrefs({ roomName: room })
 
   log(t('tut3'))
   const joined = await connect(room, { skipPrompt: true })

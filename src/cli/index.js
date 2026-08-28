@@ -11,6 +11,7 @@ const { runWait, DEFAULT_TIMEOUT_MS } = require('../commands/wait')
 const { runLeave } = require('../commands/leave')
 const { runUninstall } = require('../commands/uninstall')
 const { runUpdate } = require('../commands/update')
+const { nameToTopic } = require('./room-name')
 
 // The five room actions. `jojun keys` prints exactly these, so nothing else
 // belongs here; ONE_SHOT is what the entrypoint routes on.
@@ -26,13 +27,14 @@ function createCommands({ appName, isDev, getFlags, onBeforeAction, pkg }) {
 
   const joinCmd = command(
     'join',
-    summary('Join a Hyperswarm topic'),
-    description('Connect to a topic room by its 32-byte hex id.'),
-    arg('<topic>', 'topic hex (64 characters)'),
+    summary('Join a Hyperswarm room'),
+    description('Connect by room name (hashed) or a 64-character hex topic.'),
+    arg('<topic>', 'room name or topic hex (64 characters)'),
     async () => {
       await onBeforeAction(joinCmd)
       prepareSession(joinCmd)
-      await runJoin(joinCmd.args.topic, { json: getFlags(joinCmd).json })
+      const topic = nameToTopic(joinCmd.args.topic)
+      await runJoin(topic, { json: getFlags(joinCmd).json })
       Bare.exit(0)
     }
   )

@@ -6,6 +6,7 @@ function humanError(err) {
   const msg = err && err.message ? String(err.message) : String(err || 'error')
 
   if (/not joined/i.test(msg)) return t('errNotJoined')
+  if (/room name required/i.test(msg)) return t('errRoomName')
   if (/64 hex|hex string/i.test(msg)) return t('errHex')
   if (/timed out waiting for peer/i.test(msg)) return t('errPeer')
   if (/timed out waiting for blob/i.test(msg)) return t('errBlob')

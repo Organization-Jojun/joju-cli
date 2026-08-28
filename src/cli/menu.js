@@ -3,8 +3,8 @@
 const path = require('bare-path')
 const session = require('../core/session')
 const { resolveStorage } = require('../core/updater')
-const { FIXTURE_TOPIC_HEX } = require('../p2p/topic')
 const { isInteractive, readLine, write } = require('../core/readline')
+const { nameToTopic } = require('./room-name')
 const { runJoin } = require('../commands/join')
 const { runPaste } = require('../commands/paste')
 const { runYank } = require('../commands/yank')
@@ -52,10 +52,13 @@ async function runMenu({ flags, appName, isDev }) {
   }
 
   if (choice === '1' || choice === 'join') {
-    write('Topic (Enter = el de prueba): ')
-    let topic = await readLine()
-    if (!topic) topic = FIXTURE_TOPIC_HEX
-    await runJoin(topic, { json: flags.json })
+    write('Nombre de sala: ')
+    const name = (await readLine()).trim()
+    if (!name) {
+      write('Necesitas un nombre de sala.\n')
+      return
+    }
+    await runJoin(nameToTopic(name), { json: flags.json })
     return
   }
 

@@ -70,7 +70,7 @@ jojun_<version>_<platform>-<arch>.zip     # win32
 jojun_<version>_<platform>-<arch>.tar.gz  # darwin / linux
 ```
 
-Ejemplo: `jojun_0.1.1_win32-x64.zip`.  
+Ejemplo: `jojun_0.2.0_win32-x64.zip`.  
 `platform`: `win32` | `darwin` | `linux`.  
 `arch`: `x64` | `arm64`.  
 Dentro del archive: un solo binario `jojun` / `jojun.exe`.
@@ -98,9 +98,13 @@ curl -fsSL https://raw.githubusercontent.com/Organization-Jojun/joju-cli/main/sc
 irm https://raw.githubusercontent.com/Organization-Jojun/joju-cli/main/scripts/install.ps1 | iex
 ```
 
-Override de versión: `JOJUN_VERSION=0.1.1` (con o sin `v`).
+Override de versión: `JOJUN_VERSION=0.2.0` (con o sin `v`).
 
 Prompt largo para coding agents: [`docs/AGENT-PROMPT.md`](AGENT-PROMPT.md).
+
+## Breaking notes (agents)
+
+- **v0.2.0:** room names → SHA-256 topics (no pad-hex, no public default room). Old and new clients with the same name will not peer. Uninstall reverses Unix shell-rc PATH lines Jojun wrote.
 
 ## Si el Release workflow falla
 

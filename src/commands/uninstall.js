@@ -10,7 +10,7 @@ const swarm = require('../contracts')
 const session = require('../core/session')
 const { emit } = require('../core/output')
 const { resolveStorage } = require('../core/updater')
-const { normalizeDir, pathHasDir, removeWindowsUserPath } = require('../core/path-install')
+const { normalizeDir, pathHasDir, removeWindowsUserPath, removeUnixShellRcPath, readUnixShellRc, unixRcHasPathExport } = require('../core/path-install')
 const { isInteractive, readLine, write } = require('../core/readline')
 const { t } = require('../cli/i18n')
 
@@ -98,10 +98,6 @@ function findBinaries(documentedDir) {
 }
 
 function pathEntryCandidates(documentedDir) {
-  // Only Windows gets a Jojun-specific PATH entry (Programs\Jojun).
-  // ~/.local/bin is shared; we never strip it from shell rc files.
-  if (!isWindows) return []
-
   const dirs = []
   const add = (dir) => {
     if (!dir) return
@@ -112,8 +108,23 @@ function pathEntryCandidates(documentedDir) {
   add(documentedDir)
   if (!isDevRuntime()) add(path.dirname(os.execPath()))
 
-  const current = env.PATH || env.Path || ''
-  return dirs.map((dir) => ({ dir, present: pathHasDir(current, dir) }))
+  if (isWindows) {
+    const current = env.PATH || env.Path || ''
+    return dirs.map((dir) => ({
+      dir,
+      present: pathHasDir(current, dir),
+      kind: 'path-entry'
+    }))
+  }
+
+  // Unix: only reverse the exact shell-rc line Jojun may have appended.
+  const { content, configFile, isFish } = readUnixShellRc()
+  return dirs.map((dir) => ({
+    dir,
+    present: unixRcHasPathExport(content, dir, isFish),
+    kind: 'shell-rc',
+    configFile
+  }))
 }
 
 /**
@@ -197,10 +208,12 @@ function plan(facts, opts = {}) {
   })
 
   for (const entry of facts.pathEntries) {
+    const kind = entry.kind || 'path-entry'
     targets.push({
-      id: 'path-entry',
-      kind: 'path-entry',
-      path: entry.dir,
+      id: kind === 'shell-rc' ? 'shell-rc' : 'path-entry',
+      kind,
+      path: kind === 'shell-rc' ? entry.configFile || entry.dir : entry.dir,
+      dir: entry.dir,
       action: entry.present ? 'remove' : 'skip',
       reason: entry.present ? 'added-by-jojun' : 'absent'
     })
@@ -216,6 +229,14 @@ function removeTree(target) {
 }
 
 function removePathEntry(target) {
+  if (target.kind === 'shell-rc') {
+    const result = removeUnixShellRcPath(target.dir)
+    if (result.removed) return { outcome: 'removed', reason: target.reason }
+    if (result.reason === 'not-present') return { outcome: 'skipped', reason: 'absent' }
+    const detail = result.detail ? `${result.reason}: ${result.detail}` : result.reason
+    throw new Error(detail)
+  }
+
   const result = removeWindowsUserPath(target.path)
   if (result.removed) return { outcome: 'removed', reason: target.reason }
   if (result.reason === 'not-present') return { outcome: 'skipped', reason: 'absent' }
@@ -256,7 +277,7 @@ async function execute(planned) {
     }
 
     try {
-      if (target.kind === 'path-entry') {
+      if (target.kind === 'path-entry' || target.kind === 'shell-rc') {
         outcomes.push({ ...target, ...removePathEntry(target) })
         continue
       }
@@ -273,6 +294,9 @@ async function execute(planned) {
 }
 
 function describe(target) {
+  if (target.kind === 'shell-rc') {
+    return `${t('uninstallShellRc')} ${target.path} (${target.dir})`
+  }
   if (target.kind === 'path-entry') return `${t('uninstallPathEntry')} ${target.path}`
   if (target.kind === 'directory') {
     const entries = target.entries && target.entries.length ? ` (${target.entries.join(', ')})` : ''

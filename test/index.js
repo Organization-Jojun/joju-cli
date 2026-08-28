@@ -155,15 +155,30 @@ test('i18n: default English; es is Colombian tu', (t) => {
   setLang('en')
 })
 
-test('room-name: empty and test room map to fixture topic', (t) => {
-  t.is(nameToTopic(''), FIXTURE_TOPIC_HEX)
-  t.is(nameToTopic('test room'), FIXTURE_TOPIC_HEX)
-  t.is(nameToTopic('sala de prueba'), FIXTURE_TOPIC_HEX)
-  t.is(nameToTopic(FIXTURE_TOPIC_HEX), FIXTURE_TOPIC_HEX)
-  t.is(topicToName(FIXTURE_TOPIC_HEX), 'test room')
+test('room-name: hashes with SHA-256; no public default aliases', (t) => {
+  const crypto = require('bare-crypto')
+  const expected = crypto.createHash('sha256').update('holis', 'utf8').digest('hex')
+  t.is(nameToTopic('holis'), expected)
+  t.is(nameToTopic('  holis  '), expected)
+  t.is(nameToTopic('holis'), nameToTopic('holis'))
+  t.absent(nameToTopic('holis') === nameToTopic('Holis'), 'room names are case-sensitive')
+
+  const aliases = ['test', 'demo', 'sala', 'hello-jojun', 'test room']
+  const topics = aliases.map((n) => nameToTopic(n))
+  t.ok(new Set(topics).size === aliases.length, 'common names must not collapse to one topic')
+  for (const topic of topics) {
+    t.absent(topic === FIXTURE_TOPIC_HEX, 'must not use the old fixture public topic')
+  }
+
+  t.exception(() => nameToTopic(''), /room name/i)
+  t.exception(() => nameToTopic('   '), /room name/i)
+
+  t.is(nameToTopic(FIXTURE_TOPIC_HEX), FIXTURE_TOPIC_HEX.toLowerCase())
   const hex = nameToTopic('hackathon')
   t.is(hex.length, 64)
-  t.is(topicToName(hex), 'hackathon')
+  t.is(parseTopic(hex).length, 32)
+  t.is(topicToName(hex, 'hackathon'), 'hackathon')
+  t.is(topicToName(hex), hex.slice(0, 8) + '…')
 })
 
 test('slash: empty / suggests public human commands', (t) => {
@@ -713,6 +728,84 @@ test('path-install: unix PATH export for ~/.local/bin', (t) => {
   t.is(unixShellConfig('/bin/zsh').isFish, false)
   t.is(unixExportLine('/Users/x/.local/bin', false), '\nexport PATH="$PATH:/Users/x/.local/bin"')
   t.ok(unixExportLine('/Users/x/.local/bin', true).includes('fish_add_path'))
+})
+
+test('path-install: stripUnixPathExport removes only the Jojun export line', (t) => {
+  const { stripUnixPathExport, unixExportLine, removeUnixShellRcPath } = require('../src/core/path-install')
+  const dir = '/tmp/jojun-bin'
+  const exportLine = unixExportLine(dir, false).trim()
+  const before = ['# keep me', exportLine, 'export PATH="$PATH:/other"', ''].join('\n')
+  const stripped = stripUnixPathExport(before, dir, false)
+  t.is(stripped.removed, true)
+  t.ok(stripped.content.includes('# keep me'))
+  t.ok(stripped.content.includes('export PATH="$PATH:/other"'))
+  t.absent(stripped.content.includes(exportLine))
+
+  const fishBefore = ['# fish', unixExportLine(dir, true).trim(), ''].join('\n')
+  const fish = stripUnixPathExport(fishBefore, dir, true)
+  t.is(fish.removed, true)
+  t.absent(fish.content.includes('fish_add_path ' + dir))
+
+  const noop = stripUnixPathExport('# nothing\n', dir, false)
+  t.is(noop.removed, false)
+
+  const home = tmpStorage('zshrc-home')
+  const rc = pathTest.join(home, '.zshrc')
+  fsTest.writeFileSync(rc, before)
+  const result = removeUnixShellRcPath(dir, { home, shellPath: '/bin/zsh', configFile: rc })
+  t.is(result.removed, true)
+  const after = fsTest.readFileSync(rc, 'utf8')
+  t.absent(after.includes(exportLine))
+  t.ok(after.includes('# keep me'))
+  const again = removeUnixShellRcPath(dir, { home, shellPath: '/bin/zsh', configFile: rc })
+  t.is(again.removed, false)
+  fsTest.rmSync(home, { recursive: true, force: true })
+})
+
+test('uninstall: plan includes shell-rc when the export line is present', (t) => {
+  const facts = {
+    storage: { path: '/nope', exists: false, entries: [] },
+    pathEntries: [
+      {
+        dir: '/tmp/jojun-bin',
+        present: true,
+        kind: 'shell-rc',
+        configFile: '/tmp/home/.zshrc'
+      }
+    ],
+    binaries: [],
+    pear: { detected: false }
+  }
+  const target = uninstall.plan(facts, {}).targets.find((x) => x.id === 'shell-rc')
+  t.ok(target)
+  t.is(target.kind, 'shell-rc')
+  t.is(target.action, 'remove')
+  t.is(target.path, '/tmp/home/.zshrc')
+  t.is(target.dir, '/tmp/jojun-bin')
+})
+
+test('cli: uninstall is a registered paparam subcommand', (t) => {
+  const { createCommands, createRootCommand } = require('../src/cli/index.js')
+  const cmds = createCommands({
+    appName: 'Jojun',
+    isDev: true,
+    pkg: { version: '0.0.0' },
+    getFlags: () => ({}),
+    onBeforeAction: async () => {}
+  })
+  const root = createRootCommand({
+    appName: 'Jojun',
+    descriptionText: 'test',
+    subcommands: cmds
+  })
+  let threw = null
+  try {
+    const result = root.parse(['uninstall', '--dry-run'], { run: false })
+    t.ok(result !== null)
+  } catch (err) {
+    threw = err
+  }
+  t.absent(threw, threw && threw.message)
 })
 
 test('darwin binary: Mach-O arm64 with LC_CODE_SIGNATURE (Apple Silicon will SIGKILL if that blob is stale)', (t) => {
