@@ -235,8 +235,13 @@ test('contracts: setUseMock is a real switch (stays mock in unit tests)', async 
 })
 
 const { pathHasDir } = require('../src/core/path-install')
+const { isWindows } = require('which-runtime')
 
 test('path-install: pathHasDir matches Windows dirs', (t) => {
+  if (!isWindows) {
+    t.pass('semicolon PATH is Windows-only')
+    return
+  }
   t.ok(
     pathHasDir(
       'C:\\foo;C:\\Users\\me\\AppData\\Local\\Programs\\Jojun',
@@ -255,7 +260,6 @@ test('path-install: pathHasDir matches Windows dirs', (t) => {
 const fsTest = require('bare-fs')
 const osTest = require('bare-os')
 const pathTest = require('bare-path')
-const { isWindows } = require('which-runtime')
 const { removeFromPathValue } = require('../src/core/path-install')
 const uninstall = require('../src/commands/uninstall')
 

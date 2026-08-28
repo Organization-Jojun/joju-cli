@@ -1,7 +1,7 @@
 {
   "name": "jojun",
   "productName": "Jojun",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Paste on one machine, yank on the other — Hyperswarm topic CLI.",
   "private": true,
   "bin": "bin.mjs",
