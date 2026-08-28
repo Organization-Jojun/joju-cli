@@ -6,7 +6,7 @@
 
 <p align="center"><strong>Paste here. Receive there. Same room. No Discord, USB, or server.</strong></p>
 
-Jojun is a **room clipboard** for two laptops: you **Connect** to a shared name, **Send** a snippet on one PC, **Receive** it on the other. Under the hood that is Hyperswarm `join` / `paste` / `yank`. Binaries ship via **GitHub Releases** (no Pear seed window).
+Jojun is a **room clipboard** for two laptops: you **Connect** to a shared name, **Send** a snippet on one PC, **Receive** it on the other. Under the hood that is Hyperswarm `join` / `paste` / `yank`. Binaries ship via **GitHub Releases**.
 
 ---
 
