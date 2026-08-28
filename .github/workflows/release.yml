@@ -1,0 +1,88 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm test
+
+  build:
+    needs: test
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            make: make:win32-x64
+            host: win32-x64
+          - os: macos-latest
+            make: make:darwin-arm64
+            host: darwin-arm64
+          - os: ubuntu-latest
+            make: make:linux-x64
+            host: linux-x64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm run ${{ matrix.make }}
+      - name: Pack release asset
+        run: node scripts/pack-release-asset.js
+      - name: Upload host artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-${{ matrix.host }}
+          path: |
+            dist-release/jojun_*_${{ matrix.host }}.*
+            dist-release/checksums.txt
+          if-no-files-found: error
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+      - name: Assemble dist-release
+        run: |
+          mkdir -p dist-release
+          : > dist-release/checksums.txt
+          for dir in artifacts/release-*; do
+            host="${dir#artifacts/release-}"
+            cp -f "$dir"/jojun_*_"$host".* dist-release/ 2>/dev/null || true
+            if [ -f "$dir/checksums.txt" ]; then
+              # keep only lines for this host's assets
+              grep "_${host}\." "$dir/checksums.txt" >> dist-release/checksums.txt || true
+            fi
+          done
+          ls -la dist-release
+          test -s dist-release/checksums.txt
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist-release/*
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

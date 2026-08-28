@@ -44,16 +44,19 @@ function isDevRuntime() {
 }
 
 /**
- * The one location the install path documents: Pear v3 and the README both put
- * the standalone binary in %LOCALAPPDATA%\Programs\Jojun. Nothing equivalent
- * exists on macOS or Linux — ensureOnPath() is a no-op there, so any binary
- * found on those platforms was placed by hand (see docs/AGENT-PROMPT.md).
+ * Locations the install path documents:
+ * - Windows: %LOCALAPPDATA%\Programs\Jojun
+ * - macOS/Linux: ~/.local/bin (install.sh / GitHub Releases)
  */
 function documentedBinaryDir() {
-  if (!isWindows) return null
-  const local = env.LOCALAPPDATA
-  if (!local) return null
-  return path.join(local, 'Programs', 'Jojun')
+  if (isWindows) {
+    const local = env.LOCALAPPDATA
+    if (!local) return null
+    return path.join(local, 'Programs', 'Jojun')
+  }
+  const home = os.homedir()
+  if (!home) return null
+  return path.join(home, '.local', 'bin')
 }
 
 function pathDirs() {
@@ -95,6 +98,8 @@ function findBinaries(documentedDir) {
 }
 
 function pathEntryCandidates(documentedDir) {
+  // Only Windows gets a Jojun-specific PATH entry (Programs\Jojun).
+  // ~/.local/bin is shared; we never strip it from shell rc files.
   if (!isWindows) return []
 
   const dirs = []
@@ -129,9 +134,7 @@ function discover({ flags = {}, appName = 'Jojun', isDev = false } = {}) {
     pathEntries: pathEntryCandidates(documentedDir),
     binaries,
     pear: {
-      detected:
-        (storageExists && listDir(storagePath).includes('pear-runtime')) ||
-        (documentedDir !== null && exists(documentedDir))
+      detected: false
     }
   }
 }
@@ -205,16 +208,6 @@ function plan(facts, opts = {}) {
 
   for (const binary of facts.binaries) targets.push(planBinary(binary, opts))
 
-  if (facts.pear.detected) {
-    targets.push({
-      id: 'pear',
-      kind: 'notice',
-      path: null,
-      action: 'notice',
-      reason: 'pear-install-not-removed'
-    })
-  }
-
   return { targets }
 }
 
@@ -280,7 +273,6 @@ async function execute(planned) {
 }
 
 function describe(target) {
-  if (target.kind === 'notice') return t('uninstallPearNotice')
   if (target.kind === 'path-entry') return `${t('uninstallPathEntry')} ${target.path}`
   if (target.kind === 'directory') {
     const entries = target.entries && target.entries.length ? ` (${target.entries.join(', ')})` : ''

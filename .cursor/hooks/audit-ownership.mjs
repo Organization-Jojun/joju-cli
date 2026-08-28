@@ -17,7 +17,7 @@ import { relative, resolve, isAbsolute } from "node:path";
 // --- Mapa de ownership. Cierra estas rutas en Fase 0, junto con el layout. ---
 const OWNERSHIP = {
   "agent-a": ["src/core", "src/cli", "src/commands", "bin.mjs"],
-  "agent-b": ["src/p2p", "src/deploy", "src/update", "scripts", "out", "app.js"],
+  "agent-b": ["src/p2p", "src/update", "scripts", "out", ".github"],
 };
 
 // Rutas que cualquiera puede tocar (coordinación y estado compartido).

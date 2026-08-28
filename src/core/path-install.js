@@ -121,9 +121,8 @@ function ensureUnixUserPath(dir) {
 /**
  * Standalone binary: put its folder on the user PATH.
  * Windows: user PATH via PowerShell (never setx).
- * macOS/Linux: append to zshrc / bash_profile / fish.
- * pear-install on Mac skips writing rc if ~/.local/bin is already on PATH
- * (Pear lives there). Then `jojun` only works if the file is in that folder.
+ * macOS/Linux: append to zshrc / bash_profile / fish when ~/.local/bin is missing.
+ * install.sh places jojun in ~/.local/bin; if that dir is already on PATH, this is a no-op.
  */
 function ensureOnPath() {
   const exe = os.execPath()

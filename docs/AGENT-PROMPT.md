@@ -7,11 +7,12 @@ The agent should **install Jojun on this machine and leave it runnable**. It sho
 ---
 
 ```
-Install and launch Jojun on THIS computer. Do not wait for a human. Do not invent a different app. Do not regenerate any pear:// link.
+Install and launch Jojun on THIS computer. Do not wait for a human. Do not invent a different app.
 
 ## What Jojun is
-A room clipboard: two laptops Connect to the same room name, one Sends, the other Receives. No Discord, USB, or server. Runtime is Bare + Pear, not Node.js for the app itself. Repo: https://github.com/Organization-Jojun/joju-cli
-Pear link (do not change): pear://ta114oog37s3wfdwmp6wz7x4uucjoxckd7t4acxns7s33xbc7oeo
+A room clipboard: two laptops Connect to the same room name, one Sends, the other Receives. No Discord, USB, or server.
+Repo: https://github.com/Organization-Jojun/joju-cli
+Install is from GitHub Releases (no Pear, no seed window).
 
 Room name to use with the other PC (same spelling and case on both sides):
 ROOM=aleph
@@ -19,43 +20,38 @@ ROOM=aleph
 ## Constraints
 - Do NOT set JOJUN_USE_MOCK_P2P. That is practice-on-one-PC and will not talk to a friend.
 - Interactive UI must show “two PCs (network)” / “dos PCs (red)”, never “this PC only”.
-- If Pear install hangs, the owner may not be seeding. Fall back to building from git (below). Do not loop forever.
-- Need Node + git for the source fallback. Need a real terminal (TTY) to run `jojun` interactively.
+- Need a real terminal (TTY) to run `jojun` interactively.
 
 ## 1. Detect OS
-Print: OS, arch (arm64 vs x64), whether `pear` and `jojun` are already on PATH.
+Print: OS, arch (arm64 vs x64), whether `jojun` is already on PATH.
 
-## 2. Install Pear CLI if missing
-- macOS / Linux: curl -fsSL https://install.pears.com/pear.sh | sh
-  Then put pear on PATH (installer prints it; often ~/.local/bin or ~/.pear/bin). New shell. `pear -v` → v3.x
-- Windows (PowerShell): irm https://install.pears.com/pear.ps1 | iex
-  Binary is often %LOCALAPPDATA%\Programs\pear\pear.exe
+## 2. Install from GitHub Releases
 
-## 3. Get a working `jojun` binary
-
-### Windows (preferred: Pear)
-  pear install pear://ta114oog37s3wfdwmp6wz7x4uucjoxckd7t4acxns7s33xbc7oeo
+### Windows (PowerShell)
+  irm https://raw.githubusercontent.com/Organization-Jojun/joju-cli/main/scripts/install.ps1 | iex
   Binary: %LOCALAPPDATA%\Programs\Jojun\jojun.exe
-  If `jojun` is unknown: run that exe once (it can append its folder to user PATH without setx). Then open a NEW terminal.
-  If pear install fails or times out: git clone the repo, npm install, npm run make, copy out\win32-x64\jojun.exe to that Programs\Jojun folder and run it.
+  Run that exe once so it can append its folder to user PATH (never uses setx). Open a NEW terminal.
 
-### macOS (Apple Silicon: darwin-arm64)
-  pear install pear://ta114oog37s3wfdwmp6wz7x4uucjoxckd7t4acxns7s33xbc7oeo
-  Binary: ~/.local/bin/jojun (same dir as pear). First run codesigns the Mach-O then execs it.
-  If `pear` works, that dir is already on PATH. New terminal if needed.
-  If pear install has no darwin binary: git clone, npm install, npm run make, npm run sign skipped on Linux; on Mac make already codesigns. Copy out/darwin-arm64/jojun to ~/.local/bin/jojun.
+### macOS / Linux
+  curl -fsSL https://raw.githubusercontent.com/Organization-Jojun/joju-cli/main/scripts/install.sh | bash
+  Binary: ~/.local/bin/jojun
+  Open a new terminal if that folder was just added to PATH.
+  First run on Apple Silicon may ad-hoc codesign the Mach-O then exec it.
 
-### Linux
-  pear install may 404 the linux binary until restaged. Fallback: git clone, npm run make, copy out/linux-*/jojun to ~/.local/bin/jojun.
+### Fallback (no release yet / network blocked)
+  git clone https://github.com/Organization-Jojun/joju-cli.git
+  cd joju-cli && npm install && npm run make
+  Windows: copy out\win32-x64\jojun.exe to %LOCALAPPDATA%\Programs\Jojun\
+  macOS: copy out/darwin-arm64/jojun to ~/.local/bin/jojun
+  Linux: copy out/linux-x64/jojun to ~/.local/bin/jojun
 
-## 4. Smoke (must pass)
-Do not use mock env.
-  <binary> --no-updates --help
-  Then start interactive: <binary> --no-updates
-Tell the user: new terminal, type jojun (Windows) or the path to the native binary (Mac/Linux).
+## 3. Smoke (must pass)
+  jojun --no-updates --help
+  jojun --no-updates
+Tell the user: new terminal, type jojun.
 First-run: choose B tutorial, pick 2 = two PCs, room = ROOM (or Enter only if the friend also uses test room). Skip remaining tutorial if they already know c / e / r.
 
-## 5. How two people talk (tell the human this, then stop)
+## 4. How two people talk (tell the human this, then stop)
 Both PCs: Connect (c) to the SAME room name (ROOM).
 Receiver: Receive (r) and wait.
 Sender: Send message (e), type text.
@@ -64,19 +60,15 @@ Quit: q. Help: ?
 Spanish UI: /language es
 There is no server and no history. If nobody is Receiving, Send can be lost.
 
-## 6. If it fails
-- Abort trap / crash on first real peer: old binary. Pull main and rebuild (unsubscribe + paste flush landed on main).
-- paste delivered:true but the other side empty: old binary without flush, or Receive was not waiting.
-- peers stuck at 0: both not on live mode, or different room names, or firewall; Wait (w) up to 30s.
-- pear install never finishes: seed is down; use git+make.
+## 5. Updates
+  jojun update --check
+  jojun update
 
-## 7. Removing it again
-Jojun uninstalls itself. Do not hand the human `rm -rf` commands.
-  jojun uninstall --dry-run   # prints exactly what it would delete, deletes nothing
-  jojun uninstall             # same report, then asks y/N
+## 6. Removing it again
+  jojun uninstall --dry-run
+  jojun uninstall
 It deletes its storage dir and, on Windows, only its own user PATH entry.
-A jojun binary you copied onto PATH by hand is reported but kept; add --binaries to remove it too.
-It never removes Pear.
+A binary not in the documented install location is reported but kept; add --binaries to remove it too.
 
 Do not open a PR. Do not change product code unless install is broken on this machine.
 ```

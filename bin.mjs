@@ -18,22 +18,33 @@ function getFlags(cmd) {
   return { ...rootCmd.flags, ...cmd.flags }
 }
 
-const { joinCmd, pasteCmd, yankCmd, waitCmd, leaveCmd, keysCmd, uninstallCmd, uiCmd, tuiCmd } =
-  createCommands({
-    appName,
-    isDev,
-    getFlags,
-    onBeforeAction: async (cmd) => {
-      const flags = getFlags(cmd)
-      ensureUpdatesFlag(flags)
-      spawnUpdaterIfEnabled({
-        flags,
-        appName,
-        isDev,
-        pkg
-      })
-    }
-  })
+const {
+  joinCmd,
+  pasteCmd,
+  yankCmd,
+  waitCmd,
+  leaveCmd,
+  keysCmd,
+  uninstallCmd,
+  updateCmd,
+  uiCmd,
+  tuiCmd
+} = createCommands({
+  appName,
+  isDev,
+  pkg,
+  getFlags,
+  onBeforeAction: async (cmd) => {
+    const flags = getFlags(cmd)
+    ensureUpdatesFlag(flags)
+    spawnUpdaterIfEnabled({
+      flags,
+      appName,
+      isDev,
+      pkg
+    })
+  }
+})
 
 rootCmd = createRootCommand({
   appName,
@@ -46,6 +57,7 @@ rootCmd = createRootCommand({
     leaveCmd,
     keysCmd,
     uninstallCmd,
+    updateCmd,
     uiCmd,
     tuiCmd
   }

@@ -117,8 +117,6 @@ module.exports = {
   uninstallStorage: 'storage',
   uninstallPathEntry: 'PATH entry',
   uninstallBinary: 'binary',
-  uninstallPearNotice:
-    'Pear installed this app. This command does not remove Pear or its app entry.',
   uninstallMarkRemove: 'remove  ',
   uninstallMarkOptIn: 'keep    ',
   uninstallMarkManual: 'manual  ',

@@ -10,13 +10,14 @@ const { runYank } = require('../commands/yank')
 const { runWait, DEFAULT_TIMEOUT_MS } = require('../commands/wait')
 const { runLeave } = require('../commands/leave')
 const { runUninstall } = require('../commands/uninstall')
+const { runUpdate } = require('../commands/update')
 
 // The five room actions. `jojun keys` prints exactly these, so nothing else
 // belongs here; ONE_SHOT is what the entrypoint routes on.
 const ACTIONS = ['join', 'paste', 'yank', 'wait', 'leave']
-const ONE_SHOT = [...ACTIONS, 'keys', 'uninstall']
+const ONE_SHOT = [...ACTIONS, 'keys', 'uninstall', 'update']
 
-function createCommands({ appName, isDev, getFlags, onBeforeAction }) {
+function createCommands({ appName, isDev, getFlags, onBeforeAction, pkg }) {
   function prepareSession(cmd) {
     const flags = getFlags(cmd)
     const dir = resolveStorage(flags, appName, isDev)
@@ -115,8 +116,7 @@ function createCommands({ appName, isDev, getFlags, onBeforeAction }) {
     flag('--yes|-y', 'confirm without prompting'),
     flag('--binaries', 'also remove binaries Jojun did not place'),
     async () => {
-      // Route through the flag --no-updates already uses, so the OTA daemon
-      // cannot recreate the storage directory we are about to delete.
+      // Disable silent update check so it cannot recreate storage we delete.
       uninstallCmd.flags.noUpdates = true
       await onBeforeAction(uninstallCmd)
       prepareSession(uninstallCmd)
@@ -129,6 +129,28 @@ function createCommands({ appName, isDev, getFlags, onBeforeAction }) {
         dryRun: !!flags.dryRun,
         yes: !!flags.yes,
         removeBinaries: !!flags.binaries
+      })
+      Bare.exit(result.exitCode)
+    }
+  )
+
+  const updateCmd = command(
+    'update',
+    summary('Update Jojun from GitHub Releases'),
+    description('Check or install the latest release binary for this OS/arch.'),
+    flag('--check', 'only report whether an update is available'),
+    async () => {
+      updateCmd.flags.noUpdates = true
+      await onBeforeAction(updateCmd)
+      prepareSession(updateCmd)
+      const flags = getFlags(updateCmd)
+      const result = await runUpdate({
+        flags,
+        appName,
+        isDev,
+        json: flags.json,
+        checkOnly: !!flags.check,
+        pkg: pkg || { version: '0.0.0' }
       })
       Bare.exit(result.exitCode)
     }
@@ -156,6 +178,7 @@ function createCommands({ appName, isDev, getFlags, onBeforeAction }) {
     leaveCmd,
     keysCmd,
     uninstallCmd,
+    updateCmd,
     uiCmd,
     tuiCmd,
     ACTIONS
@@ -163,19 +186,7 @@ function createCommands({ appName, isDev, getFlags, onBeforeAction }) {
 }
 
 function createRootCommand({ appName, descriptionText, subcommands }) {
-  const { joinCmd, pasteCmd, yankCmd, waitCmd, leaveCmd, keysCmd, uninstallCmd, uiCmd, tuiCmd } =
-    subcommands
-
-  return command(
-    appName,
-    summary(descriptionText),
-    description('Paste on one machine, yank on the other — Hyperswarm topic CLI.'),
-    flag('--storage <dir>', 'custom storage directory'),
-    flag('--no-updates', 'disable OTA updates for this run'),
-    flag('--update-window <ms>', 'updater wait in milliseconds'),
-    flag('--json', 'print status as JSON'),
-    flag('--menu', 'open the numbered action menu (one-shot)'),
-    flag('--updater', 'run updater daemon').hide(),
+  const {
     joinCmd,
     pasteCmd,
     yankCmd,
@@ -183,6 +194,29 @@ function createRootCommand({ appName, descriptionText, subcommands }) {
     leaveCmd,
     keysCmd,
     uninstallCmd,
+    updateCmd,
+    uiCmd,
+    tuiCmd
+  } = subcommands
+
+  return command(
+    appName,
+    summary(descriptionText),
+    description('Paste on one machine, yank on the other — Hyperswarm topic CLI.'),
+    flag('--storage <dir>', 'custom storage directory'),
+    flag('--no-updates', 'disable update checks for this run'),
+    flag('--update-window <ms>', 'ignored (legacy Pear flag)').hide(),
+    flag('--json', 'print status as JSON'),
+    flag('--menu', 'open the numbered action menu (one-shot)'),
+    flag('--updater', 'legacy Pear daemon (removed)').hide(),
+    joinCmd,
+    pasteCmd,
+    yankCmd,
+    waitCmd,
+    leaveCmd,
+    keysCmd,
+    uninstallCmd,
+    updateCmd,
     uiCmd,
     tuiCmd
   )
