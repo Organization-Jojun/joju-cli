@@ -28,16 +28,11 @@ Print: OS, arch (arm64 vs x64), whether `jojun` is already on PATH.
 ## 2. Install from GitHub Releases
 
 ### Windows (PowerShell)
-  Prefer:
-    [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-    $i="$env:TEMP\jojun-install.ps1"
-    Invoke-WebRequest -Uri https://raw.githubusercontent.com/Organization-Jojun/joju-cli/main/scripts/install.ps1 -OutFile $i -UseBasicParsing
-    powershell -NoProfile -ExecutionPolicy Bypass -File $i
-  Or: irm https://raw.githubusercontent.com/Organization-Jojun/joju-cli/main/scripts/install.ps1 | iex
+  irm https://get.jojun.jonathanrbt.lat | iex
   Binary: %LOCALAPPDATA%\Programs\Jojun\jojun.exe (installer adds user PATH; never setx). NEW terminal, then `jojun`.
 
 ### macOS / Linux
-  curl -fsSL https://raw.githubusercontent.com/Organization-Jojun/joju-cli/main/scripts/install.sh | bash
+  curl -fsSL https://get.jojun.jonathanrbt.lat | bash
   Binary: ~/.local/bin/jojun
   Open a new terminal if that folder was just added to PATH.
   First run on Apple Silicon may ad-hoc codesign the Mach-O then exec it.

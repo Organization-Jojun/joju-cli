@@ -88,18 +88,20 @@ Si renombras assets o omites `checksums.txt`, **install y update fallan**.
 
 ## Install one-liners (usuarios / agentes)
 
-```bash
-# macOS / Linux
-curl -fsSL https://raw.githubusercontent.com/Organization-Jojun/joju-cli/main/scripts/install.sh | bash
+```powershell
+# Windows
+irm https://get.jojun.jonathanrbt.lat | iex
 ```
 
-```powershell
-# Windows (file form — most reliable on Windows PowerShell 5.1)
-[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-$i = "$env:TEMP\jojun-install.ps1"
-Invoke-WebRequest -Uri https://raw.githubusercontent.com/Organization-Jojun/joju-cli/main/scripts/install.ps1 -OutFile $i -UseBasicParsing
-powershell -NoProfile -ExecutionPolicy Bypass -File $i
+```bash
+# macOS / Linux
+curl -fsSL https://get.jojun.jonathanrbt.lat | bash
 ```
+
+Mirror (GitHub raw): `…/main/install.ps1` y `…/main/install.sh`.  
+Worker Cloudflare `jojun-get` sirve esos scripts en `get.jojun.jonathanrbt.lat`.
+
+Entrypoints públicos: `install.ps1` / `install.sh` en la **raíz** del repo. `scripts/install.*` solo redirigen (compat).
 
 Override de versión: `JOJUN_VERSION=0.2.0` (con o sin `v`).
 

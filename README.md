@@ -15,31 +15,19 @@ Jojun is a **room clipboard** for two laptops: you **Connect** to a shared name,
 ### Windows (PowerShell)
 
 ```powershell
-irm https://raw.githubusercontent.com/Organization-Jojun/joju-cli/main/scripts/install.ps1 | iex
-```
-
-If that fails on an older PowerShell, use the file form (more reliable on Windows PowerShell 5.1):
-
-```powershell
-[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-$i = "$env:TEMP\jojun-install.ps1"
-Invoke-WebRequest -Uri https://raw.githubusercontent.com/Organization-Jojun/joju-cli/main/scripts/install.ps1 -OutFile $i -UseBasicParsing
-powershell -NoProfile -ExecutionPolicy Bypass -File $i
-```
-
-Binary: `%LOCALAPPDATA%\Programs\Jojun\jojun.exe`. The installer adds that folder to your **user PATH** (never `setx`). Open a **new** terminal, then:
-
-```powershell
-jojun
+irm https://get.jojun.jonathanrbt.lat | iex
 ```
 
 ### macOS / Linux
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/Organization-Jojun/joju-cli/main/scripts/install.sh | bash
+curl -fsSL https://get.jojun.jonathanrbt.lat | bash
 ```
 
-Binary: `~/.local/bin/jojun`. Open a new terminal if PATH was just updated. On Apple Silicon the release file is a small launcher that ad-hoc `codesign`s the Mach-O on first run.
+Then open a **new** terminal and type `jojun`.
+
+- Windows → `%LOCALAPPDATA%\Programs\Jojun\jojun.exe` (PATH se registra al instalar)
+- macOS / Linux → `~/.local/bin/jojun` (Apple Silicon puede codesign al primer run)
 
 ### Coding agent
 
@@ -164,9 +152,11 @@ src/core/               session files, PATH helper, update glue
 src/contracts/          CLI ↔ P2P (setUseMock)
 src/p2p/                Hyperswarm + mock
 src/update/             GitHub Releases client, checksums, install targets
-scripts/install.sh      Unix installer
-scripts/install.ps1     Windows installer
 scripts/pack-release-asset.js
+scripts/install.sh      (legacy redirect → /install.sh)
+scripts/install.ps1     (legacy redirect → /install.ps1)
+install.sh              Unix installer (short public URL)
+install.ps1             Windows installer (short public URL)
 docs/AGENT-PROMPT.md    paste into a coding agent to install Jojun
 docs/RELEASE.md         how to ship a new version
 ```
