@@ -1,0 +1,26 @@
+---
+import { HeroCtaGlass } from '@/components/react/HeroGlass';
+---
+
+<section data-anim="hero" class="relative z-2 grid min-h-screen place-items-center overflow-hidden px-6 pt-[120px] pb-[90px]">
+  <div class="pointer-events-none absolute inset-0 z-1 bg-[linear-gradient(to_bottom,rgba(8,8,11,0.55)_0%,transparent_26%,transparent_64%,rgba(8,8,11,0.72)_100%)]"></div>
+
+  <div data-anim="hero-content" class="relative z-2 flex w-full max-w-[900px] flex-col items-center gap-[30px] text-center will-change-transform">
+    <h1 class="m-0 font-pixel text-[clamp(38px,7vw,92px)] font-normal leading-[1.1] tracking-normal">
+      <span class="block overflow-hidden pb-[0.12em]">
+        <span data-anim="hero-line" class="block [text-shadow:0_0_42px_rgba(124,140,255,0.35)]">JoJun</span>
+      </span>
+    </h1>
+
+    <p data-anim="hero-sub" class="glass m-0 max-w-[560px] rounded-[18px] px-[22px] py-4 text-[clamp(16px,1.5vw,19px)] leading-[1.55] text-ink/70">
+      Dos computadores entran a la misma sala y el texto pasa de uno al otro. Sin cuenta, sin correo,
+      sin un servidor nuestro en el medio.
+    </p>
+
+    <div data-anim="hero-cta" class="mt-1 flex flex-wrap items-center justify-center gap-3">
+      <HeroCtaGlass client:load />
+    </div>
+  </div>
+
+  <div data-anim="scroll-cue" class="animate-cue absolute bottom-[34px] left-1/2 z-2 h-[52px] w-px -translate-x-1/2 bg-[linear-gradient(to_bottom,rgba(124,140,255,0.9),transparent)]"></div>
+</section>
