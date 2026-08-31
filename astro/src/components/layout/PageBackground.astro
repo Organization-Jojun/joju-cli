@@ -1,0 +1,15 @@
+---
+import FaultyTerminal from '@/components/react/FaultyTerminal';
+---
+
+{/* Fondo único de toda la página: fijo al viewport, siempre visible al hacer scroll.
+    CSS fallback pinta al instante; WebGL se superpone cuando hidrata en idle. */}
+<div data-anim="page-bg" class="pointer-events-none fixed inset-0 z-0 will-change-transform">
+  <div class="page-bg-fallback" aria-hidden="true"></div>
+  <div class="page-bg-gl">
+    <FaultyTerminal client:idle tint="#7c8cff" brightness={0.95} />
+  </div>
+</div>
+<div
+  class="pointer-events-none fixed inset-0 z-1 bg-[radial-gradient(ellipse_88%_72%_at_50%_45%,rgba(8,8,11,0)_0%,rgba(8,8,11,0.5)_68%,rgba(8,8,11,0.92)_100%)]"
+></div>
