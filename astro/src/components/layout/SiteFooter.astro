@@ -1,0 +1,15 @@
+---
+import { site } from '@/data/site';
+import FooterGlass from '@/components/react/FooterGlass';
+---
+
+<footer data-anim="footer" class="relative z-2 border-t border-white/[0.06] bg-[rgba(8,8,11,0.86)] px-6 pt-[clamp(70px,10vh,110px)] pb-11">
+  <div class="mx-auto flex w-full max-w-[1080px] flex-col gap-12">
+    <FooterGlass client:idle />
+
+    <div class="flex flex-wrap items-center justify-between gap-4 border-t border-white/[0.06] pt-[26px]">
+      <span class="font-pixel text-[11px] text-ink/50">jojun</span>
+      <span class="font-mono text-[11.5px] text-ink/30">{site.version} · {site.license}</span>
+    </div>
+  </div>
+</footer>
