@@ -1,0 +1,22 @@
+---
+import SectionHeading from '@/components/ui/SectionHeading.astro';
+import InstallCards from '@/components/react/InstallCards';
+---
+
+<section id="instalacion" data-anim="install" class="relative z-2 bg-[rgba(8,8,11,0.74)] px-6 py-[clamp(90px,13vh,150px)]">
+  <div class="mx-auto w-full max-w-[1080px]">
+    <SectionHeading eyebrow="Instalación">
+      <Fragment slot="title">Una línea.</Fragment>
+      Corre el instalador, abre una terminal nueva y escribe <code class="font-mono text-[15px] text-ink/85">jojun</code>.
+    </SectionHeading>
+
+    <InstallCards client:idle />
+
+    <p class="mt-[18px] flex flex-wrap items-center gap-2.5 font-mono text-[12px] text-ink/40">
+      <span>Actualizar:</span>
+      <code class="rounded-[7px] border border-white/[0.08] bg-white/5 px-2.5 py-[5px] text-ink/70">jojun update</code>
+      <span>Desinstalar:</span>
+      <code class="rounded-[7px] border border-white/[0.08] bg-white/5 px-2.5 py-[5px] text-ink/70">jojun uninstall</code>
+    </p>
+  </div>
+</section>
