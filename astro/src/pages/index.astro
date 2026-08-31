@@ -1,0 +1,32 @@
+---
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import Nav from '@/components/layout/Nav.astro';
+import PageBackground from '@/components/layout/PageBackground.astro';
+import Hero from '@/components/sections/Hero.astro';
+import Principles from '@/components/sections/Principles.astro';
+import SessionDemo from '@/components/sections/SessionDemo.astro';
+import Install from '@/components/sections/Install.astro';
+import Stack from '@/components/sections/Stack.astro';
+import SiteFooter from '@/components/layout/SiteFooter.astro';
+---
+
+<BaseLayout>
+  <PageBackground />
+  <Nav />
+  <main class="relative isolate">
+    <Hero />
+    <Principles />
+    <SessionDemo />
+    <Install />
+    <Stack />
+  </main>
+  <SiteFooter />
+  <script>
+    const bootMotion = () => import('@/scripts/motion').then((m) => m.initMotion());
+    if ('requestIdleCallback' in window) {
+      requestIdleCallback(bootMotion, { timeout: 2000 });
+    } else {
+      setTimeout(bootMotion, 150);
+    }
+  </script>
+</BaseLayout>
