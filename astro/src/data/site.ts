@@ -2,8 +2,8 @@ export const site = {
   name: 'Jojun',
   version: 'v0.2.0',
   license: 'Apache-2.0',
-  repo: 'https://github.com/Organization-Jojun/joju-cli',
-  repoLabel: 'Organization-Jojun/joju-cli',
+  repo: 'https://github.com/Organization-Jojun/jojun-cli',
+  repoLabel: 'Organization-Jojun/jojun-cli',
   url: 'https://jojun.jonathanrbt.lat',
   title: 'Jojun — portapapeles de sala entre dos computadores',
   description:
