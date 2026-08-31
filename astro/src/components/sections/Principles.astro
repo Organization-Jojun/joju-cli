@@ -1,0 +1,22 @@
+---
+import PrinciplesBento from '@/components/react/PrinciplesBento';
+---
+
+<section data-anim="why" class="relative z-2 bg-[rgba(8,8,11,0.72)]">
+  <div data-anim="why-inner" class="flex flex-col justify-center px-6 py-[clamp(90px,13vh,150px)]">
+    <div class="mx-auto w-full max-w-[1080px]">
+      <div data-anim="why-head" class="mb-[clamp(48px,7vh,84px)] max-w-[680px]">
+        <p data-anim="why-eyebrow" class="mb-[22px] font-mono text-[11px] uppercase tracking-[0.2em] text-accent/85">Arquitectura</p>
+        <h2 class="m-0 font-pixel text-[clamp(19px,2.5vw,33px)] font-normal leading-[1.4] tracking-normal mb-[26px] overflow-hidden">
+          <span data-anim="why-title" class="inline-block">Privacidad.</span>
+        </h2>
+        <p data-anim="why-body" class="m-0 text-[clamp(16px,1.5vw,19px)] leading-relaxed text-ink/55">
+          No podemos abrir tu historial porque no existe de nuestro lado. Jojun no monta una bandeja
+          con tu nombre: monta un canal entre dos máquinas y lo cierra cuando terminas.
+        </p>
+      </div>
+
+      <PrinciplesBento client:visible />
+    </div>
+  </div>
+</section>
