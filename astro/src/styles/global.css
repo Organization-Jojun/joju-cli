@@ -122,13 +122,6 @@
   }
 }
 
-@utility glass {
-  background: rgba(255, 255, 255, 0.045);
-  border: 1px solid rgba(255, 255, 255, 0.09);
-  backdrop-filter: blur(24px) saturate(140%);
-  -webkit-backdrop-filter: blur(24px) saturate(140%);
-}
-
 @keyframes jj-blink { 0%, 49% { opacity: 1 } 50%, 100% { opacity: 0 } }
 @keyframes jj-cue {
   0% { transform: scaleY(0); transform-origin: top }

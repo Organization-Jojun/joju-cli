@@ -83,6 +83,7 @@ function architecture() {
 function desktopOnly() {
   const hero = { trigger: '[data-anim="hero"]', start: 'top top', end: 'bottom top', scrub: 0.4 } as const;
 
-  gsap.to('[data-anim="hero-content"]', { yPercent: -16, opacity: 0, filter: 'blur(6px)', ease: 'none', scrollTrigger: hero });
+  // No filter here — it breaks backdrop-filter on glass children (hero subtitle, CTA)
+  gsap.to('[data-anim="hero-content"]', { yPercent: -16, opacity: 0, ease: 'none', scrollTrigger: hero });
   gsap.to('[data-anim="page-bg"]', { scale: 1.14, ease: 'none', scrollTrigger: { ...hero, scrub: 0.5 } });
 }

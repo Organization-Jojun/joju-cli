@@ -1,5 +1,6 @@
 ---
 import '@/styles/global.css';
+import '@/styles/glass.css';
 import { site } from '@/data/site';
 
 interface Props { title?: string; description?: string }
@@ -18,6 +19,8 @@ const ogImage = new URL(site.ogImage, Astro.site ?? site.url).toString();
     <meta name="description" content={description} />
     <link rel="canonical" href={canonical} />
     <meta name="theme-color" content="#08080b" />
+    <link rel="icon" type="image/png" href="/logoJojun.png" />
+    <link rel="apple-touch-icon" href="/logoJojun.png" />
 
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content={site.name} />
